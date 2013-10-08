@@ -35,16 +35,16 @@ mameduino <SERIAL_DEVICE> <COMMAND>
 - -c COIN# KEY ... Set keyboard keys to send when coin is inserted.
 - -v Be verbose.
 
-**Currently valid buttons: 0-4.** 
-**Currently valid coins: 0-2.** 
-**Up to 5 keys are currently supported. Special keys are supported by their names:** 
+**Currently valid buttons: 0-4.**  
+**Currently valid coins: 0-2.**  
+**Up to 5 keys are currently supported. Special keys are supported by their names:**  
   LCTRL, LSHIFT, LALT, LGUI, RCTRL, RSHIFT, RALT, RGUI, UP, DOWN, LEFT, RIGHT, BACKSPACE, TAB, RETURN, ESC, INSERT, DELETE, PAGEUP, PAGEDOWN, HOME, END, F1-F12
- 
+
 **Examples:** 
-Turn coin rejection on: ```mameduino /dev/ttyUSB0 -r on``` 
-Set keys to send when button 0 is pressed: ```mameduino /dev/ttyS0 -s 0 UP UP LEFT``` 
-Set keys to send when coin 2 is inserted: ```mameduino /dev/ttyS0 -c 2 b l a r g``` 
- 
+Turn coin rejection on: ```mameduino /dev/ttyUSB0 -r on```  
+Set keys to send when button 0 is pressed: ```mameduino /dev/ttyS0 -s 0 UP UP LEFT```  
+Set keys to send when coin 2 is inserted: ```mameduino /dev/ttyS0 -c 2 b l a r g```  
+
 I found a bug or have suggestion
 ========
 
