@@ -1,8 +1,9 @@
 MAMEduino
 ========
 
-Use an Arduino Leonardo to connect physical (arcade-style) buttons and/or a coin receptor to a PC. The Arduino then sends a configurable number of keypresses to the PC when buttons are pressed or coins are inserted, and can also startup/shutdown or reset the PC with the appropriate pins connected. The keypresses sent can be configured via small console program which currently works on Linux only (tested on Ubuntu 13.04). 
-A Fritzing layout for the connection can be found in [MAMEduino.fzz](https://github.com/HorstBaerbel/MAMEduino/blob/master/MAMEduino.fzz) and the necessary Arduino source code in [MAMEduino/MAMEduino.ino](https://github.com/HorstBaerbel/MAMEduino/blob/master/MAMEduino/MAMEduino.ino).
+Use an Arduino Leonardo to connect physical (arcade-style) buttons and/or a coin receptor to a PC. The Arduino then sends a configurable number of keypresses to the PC when buttons are pressed or coins are inserted, and can also startup/shutdown or reset the PC with the appropriate pins connected. The keypresses sent can be configured via small console program which currently works on Linux only (tested on Ubuntu 13.04).  
+A Fritzing layout for the connection can be found in [MAMEduino.fzz](https://github.com/HorstBaerbel/MAMEduino/blob/master/MAMEduino.fzz) and the necessary Arduino source code in [MAMEduino/MAMEduino.ino](https://github.com/HorstBaerbel/MAMEduino/blob/master/MAMEduino/MAMEduino.ino).  
+The coin receptor that was used is the [MoneyControls SR3 Type2](https://www.google.de/search?q=MoneyControls+SR3+Type2+datasheet). Other models will probably need adjustments to the Arduino source code or even the electronic interface/wiring.
 
 License
 ========
@@ -45,7 +46,7 @@ Turn coin rejection on: ```mameduino /dev/ttyUSB0 -r on```
 Set keys to send when button 0 is pressed: ```mameduino /dev/ttyS0 -s 0 UP UP LEFT```  
 Set keys to send when coin 2 is inserted: ```mameduino /dev/ttyS0 -c 2 b l a r g```  
 
-I found a bug or have suggestion
+I found a bug or have a suggestion
 ========
 
 The best way to report a bug or suggest something is to post an issue on GitHub. Try to make it simple, but descriptive and add ALL the information needed to REPRODUCE the bug. **"Does not work" is not enough!** If you can not compile, please state your system, compiler version, etc! You can also contact me via email if you want to.
