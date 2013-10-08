@@ -1,5 +1,7 @@
 #include <string>
+#include <map>
 #include <iostream>
+#include <sstream>
 
 #include <stdio.h>
 #include <unistd.h>
@@ -24,7 +26,7 @@ enum Command {SET_COIN_REJECT, SET_BUTTON_SHORT, SET_BUTTON_LONG, SET_COIN, BAD_
 #define COMMAND_OK "OK" //!<Response sent when a command is detected.
 #define COMMAND_NOK "NOK" //!<Response sent when the command or its arguments are not ok.
 
-std::map<ButtonCommand, unsigned char> commandMap; //!<Maps arduino commands to their serial terminal values.
+std::map<Command, unsigned char> commandMap; //!<Maps arduino commands to their serial terminal values.
 std::map<std::string, unsigned char> keyNameMap; //!<Maps key name strings to their unsigned char value.
 std::string serialPortName = "/dev/ttyUSB0";
 
@@ -81,28 +83,28 @@ void setup()
 
 void printVersion()
 {
-	std::cout << ConsoleStyle(ConsoleStyle::CYAN) << "MAMEduino " << MAMEDUINO_VERSION_STRING << ConsoleStyle() << " - Configure the Arduino Leonardo MAME interface." << std::endl << std::endl;
+	std::cout << ConsoleStyle(ConsoleStyle::CYAN) << "MAMEduino " << MAMEDUINO_VERSION_STRING << ConsoleStyle() << " - Configure the Arduino Leonardo MAME interface." << std::endl;
 }
 
 void printUsage()
 {
     std::cout << std::endl;
-    std::cout << "Usage: mameduino <SERIAL_DEVICE> [options]" << std::endl;
-    std::cout << "Valid options:" << std::endl;
-    std::cout << ConsoleStyle(ConsoleStyle::CYAN) << "-r <on/off>" << ConsoleStyle() << " - Set coin rejection to on or off." << std::endl;
-    std::cout << ConsoleStyle(ConsoleStyle::CYAN) << "-s <BUTTON#> <KEY> <KEY> ..." << ConsoleStyle() << " - Set keyboard keys to send when" << std::endl << "  button is SHORT-pressed. Up to 5 keys are supported.
-    std::cout << ConsoleStyle(ConsoleStyle::CYAN) << "-l <BUTTON#> <KEY> <KEY> ..." << ConsoleStyle() << " - Set keyboard keys to send when" << std::endl << "  button is LONG-pressed. Up to 5 keys are supported.
-    std::cout << ConsoleStyle(ConsoleStyle::CYAN) << "-c <COIN#> <KEY> <KEY> ..." << ConsoleStyle() << " - Set keyboard keys to send when" << std::endl << "  coin is inserted. Up to 5 keys are supported.
+    std::cout << "Usage: mameduino <SERIAL_DEVICE> command" << std::endl;
+    std::cout << "Valid commands:" << std::endl;
+    std::cout << ConsoleStyle(ConsoleStyle::CYAN) << "-r \"on\"|\"off\"" << ConsoleStyle() << " - Set coin rejection to on or off." << std::endl;
+    std::cout << ConsoleStyle(ConsoleStyle::CYAN) << "-s BUTTON# KEY ..." << ConsoleStyle() << " - Set keyboard keys to send when button is SHORT-pressed."  << std::endl;
+    std::cout << ConsoleStyle(ConsoleStyle::CYAN) << "-l BUTTON# KEY ..." << ConsoleStyle() << " - Set keyboard keys to send when button is LONG-pressed."  << std::endl;
+    std::cout << ConsoleStyle(ConsoleStyle::CYAN) << "-c COIN# KEY ..." << ConsoleStyle() << " - Set keyboard keys to send when coin is inserted." << std::endl;
     std::cout << "Currently valid buttons: 0-4." << std::endl;
     std::cout << "Currently valid coins: 0-2." << std::endl;
-    std::cout << "Special keys are supported by their names: " << std::endl;
+    std::cout << "Up to 5 keys are supported. Special keys are referenced by their names: " << std::endl;
     std::cout << "  LCTRL, LSHIFT, LALT, LGUI, RCTRL, RSHIFT, RALT, RGUI," << std::endl;
     std::cout << "  UP, DOWN, LEFT, RIGHT, BACKSPACE, TAB, RETURN, ESC," << std::endl;
     std::cout << "  INSERT, DELETE, PAGEUP, PAGEDOWN, HOME, END, F1-F12" << std::endl;
     std::cout << "Examples:" << std::endl;
     std::cout << "mameduino /dev/ttyUSB0 -r on (turn coin rejection on)" << std::endl;
-    std::cout << "mameduino /dev/ttyS0 -s 0 UP UP LEFT (send cheat for button 0)" << std::endl;
-    std::cout << "mameduino /dev/ttyS0 -c 2 a a a a (send aaaa for coin 2)" << std::endl;
+    std::cout << "mameduino /dev/ttyS0 -s 0 UP UP LEFT (send cursor keys for button 0)" << std::endl;
+    std::cout << "mameduino /dev/ttyS0 -c 2 b l a r g (send \"blarg\" for coin 2)" << std::endl;
 }
 
 bool readKeys(int argc, const char * argv[], int startIndex)
@@ -117,7 +119,7 @@ bool readKeys(int argc, const char * argv[], int startIndex)
                 auto keyIt = keyNameMap.find(key);
                 if (keyIt != keyNameMap.cend()) {
                     //found. append to command arguments
-                    commandArguments[argumentIndex++] = *keyIt;
+                    commandArguments[argumentIndex++] = keyIt->second;
                 }
                 else {
                     //not found. complain to user
@@ -140,15 +142,20 @@ bool readKeys(int argc, const char * argv[], int startIndex)
 
 bool readArguments(int argc, const char * argv[])
 {
-    for(int i = 1; i < argc;) {
+    //first argument must be device
+    std::string argument = argv[1];
+    if (argument.at(0) == '/') {
+        serialPortName = argument;
+    }
+    else {
+        std::cout << ConsoleStyle(ConsoleStyle::RED) << "Error: Firs argument must be a serial port device string." << ConsoleStyle() << std::endl;
+        return false;
+    }
+    for(int i = 2; i < argc;) {
         //read argument from list
-        std::string argument = argv[i++];
+        argument = argv[i++];
         //check what it is
-        if (argument.at(0) == '/') {
-            //must be a device string
-            serialPortName = argument;
-        }
-        else if (argument == "-r") {
+        if (argument == "-r") {
             //czeck if we have another argument
             if (i < argc) {
                 //read next argument: "on" or "off"
@@ -159,7 +166,7 @@ bool readArguments(int argc, const char * argv[])
                 }
                 command = SET_COIN_REJECT;
 				commandChar = commandMap[command];
-                commandArgument[0] = onoff == "on" ? 1 : 0;
+                commandArguments[0] = onoff == "on" ? 1 : 0;
                 return true;
             }
             else {
@@ -218,7 +225,7 @@ bool readArguments(int argc, const char * argv[])
     return false;
 }
 
-bool writeToPort(unsigned char * data, ssize_t size)
+bool writeToPort(const int serialPort, const unsigned char * data, const ssize_t size)
 {
 	//write bytes to the port
 	ssize_t n = write(serialPort, data, size);
@@ -229,7 +236,7 @@ bool writeToPort(unsigned char * data, ssize_t size)
 	return true;
 }
 
-int main(int argc, char * argv[])
+int main(int argc, const char * argv[])
 {
 	setup();
 
@@ -279,14 +286,14 @@ int main(int argc, char * argv[])
 	// ??? fcntl(fd, F_SETFL, 0);
 
 	//write command to the port
-	if (!writeToPort(commandChar, sizeof(commandChar))) {
+	if (!writeToPort(serialPort, &commandChar, sizeof(commandChar))) {
 		close(serialPort);
 		return -4;
 	}
 	//write command arguments to port
 	switch (command) {
 		case SET_COIN_REJECT:
-			if (!writeToPort(commandArgument, sizeof(unsigned char))) {
+			if (!writeToPort(serialPort, (const unsigned char *)&commandArguments, sizeof(unsigned char))) {
 				close(serialPort);
 				return -4;
 			}
@@ -294,7 +301,7 @@ int main(int argc, char * argv[])
 		case SET_BUTTON_SHORT:
 		case SET_BUTTON_LONG:
 		case SET_COIN:
-			if (!writeToPort(deviceIndex, sizeof(unsigned char)) || !writeToPort(commandArgument, sizeof(commandArgument))) {
+			if (!writeToPort(serialPort, &deviceIndex, sizeof(unsigned char)) || !writeToPort(serialPort, (const unsigned char *)&commandArguments, sizeof(commandArguments))) {
 				close(serialPort);
 				return -4;
 			}
