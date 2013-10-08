@@ -89,7 +89,7 @@ void printVersion()
 void printUsage()
 {
     std::cout << std::endl;
-    std::cout << "Usage: mameduino <SERIAL_DEVICE> command" << std::endl;
+    std::cout << "Usage: mameduino <SERIAL_DEVICE> <COMMAND>" << std::endl;
     std::cout << "Valid commands:" << std::endl;
     std::cout << ConsoleStyle(ConsoleStyle::CYAN) << "-r \"on\"|\"off\"" << ConsoleStyle() << " - Set coin rejection to on or off." << std::endl;
     std::cout << ConsoleStyle(ConsoleStyle::CYAN) << "-s BUTTON# KEY ..." << ConsoleStyle() << " - Set keyboard keys to send when button is SHORT-pressed."  << std::endl;
