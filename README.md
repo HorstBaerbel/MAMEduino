@@ -29,18 +29,16 @@ mameduino <SERIAL_DEVICE> <COMMAND>
 ```
 
 **Valid commands:**
-- -r <on/off> Set coin rejection to on or off.
-- -s <BUTTON#> <KEY> <KEY> ... Set keyboard keys to send when button is SHORT-pressed (~0.3s). Up to 5 keys are supported.
-- -l <BUTTON#> <KEY> <KEY> ... Set keyboard keys to send when button is LONG-pressed (~5s). Up to 5 keys are supported.
-- -c <COIN#> <KEY> <KEY> ... Set keyboard keys to send when coin is inserted. Up to 5 keys are supported.
+- -r "on"|"off" Set coin rejection to on or off.
+- -s BUTTON# KEY ... Set keyboard keys to send when button is SHORT-pressed (~0.3s). Up to 5 keys are supported.
+- -l BUTTON# KEY ... Set keyboard keys to send when button is LONG-pressed (~5s). Up to 5 keys are supported.
+- -c COIN# KEY ... Set keyboard keys to send when coin is inserted. Up to 5 keys are supported.
 - -v Be verbose.
 
 **Currently valid buttons: 0-4.**
 **Currently valid coins: 0-2.**
 **Special keys are supported by their names:**
-- LCTRL, LSHIFT, LALT, LGUI, RCTRL, RSHIFT, RALT, RGUI,
-- UP, DOWN, LEFT, RIGHT, BACKSPACE, TAB, RETURN, ESC,
-- INSERT, DELETE, PAGEUP, PAGEDOWN, HOME, END, F1-F12
+  LCTRL, LSHIFT, LALT, LGUI, RCTRL, RSHIFT, RALT, RGUI, UP, DOWN, LEFT, RIGHT, BACKSPACE, TAB, RETURN, ESC, INSERT, DELETE, PAGEUP, PAGEDOWN, HOME, END, F1-F12
 
 **Examples:**
 Turn coin rejection on: ```mameduino /dev/ttyUSB0 -r on```
