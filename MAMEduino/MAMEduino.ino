@@ -1,3 +1,15 @@
+//----- power/reset ------------------------------------------------------------------------
+
+//pin for mainboard power switch
+#define PIN_POWER 7
+#define CHAR_PIN_POWER 255
+//pin for mainboard reset switch
+#define PIN_RESET 6
+#define CHAR_PIN_RESET (CHAR_PIN_POWER-1)
+
+//this is where the first hardware function starts
+#define CHAR_HARDWARE_FUNCTION CHAR_PIN_RESET
+
 //----- keyboard ------------------------------------------------------------------------------------
 
 //pin for redirecting keyboard codes to serial port instead of keyboard
@@ -7,39 +19,55 @@
 #define KEYS_NUMBER_OF 5
 
 //How long to wait between simulated key presses
-#define KEYS_PRESS_NEXT_DELAY 300
+#define KEYS_PRESS_NEXT_DELAY 100
 
 void keyboardSendString(byte keys[5])
 {
-  byte i = 0;
+  /*
+  for (int j = 0; j < 5; j++) {
+    Keyboard.write(keys[j]);
+  }*/
+  int i = 0;
   //check for keyboard to COM redirection
-  if (digitalRead(PIN_KEY_TO_SERIAL) == HIGH) {
+  /*if (digitalRead(PIN_KEY_TO_SERIAL) == HIGH) {
     //on. send to serial port
-    while (i < KEYS_NUMBER_OF && keys[i] != 0) {
+    while ((i < KEYS_NUMBER_OF) && (keys[i] != 0)) {
       Serial.write(keys[i]);
       i++;
     }
     Serial.write('\n');
   }
-  else {
+  else {*/
     //off. send as keystrokes
-    while (i < KEYS_NUMBER_OF && keys[i] != 0) {
-      Keyboard.write(keys[i]);
-      i++;
-      if (i < KEYS_NUMBER_OF && keys[i] != 0) {
-        //there is a next key. insert delay.
+    while ((i < KEYS_NUMBER_OF) && (keys[i] != 0)) {
+      if (keys[i] < 128) {
+        Keyboard.write(keys[i]);
         delay(KEYS_PRESS_NEXT_DELAY);
       }
+      else if (keys[i] < CHAR_HARDWARE_FUNCTION) {
+        Keyboard.press(keys[i]);
+        delay(KEYS_PRESS_NEXT_DELAY);
+        Keyboard.releaseAll();
+      }
+      else {
+        //hardware function. yeah, I could have used a map.
+        if (keys[i] == CHAR_PIN_RESET) {
+          //activate reset pin
+          digitalWrite(PIN_RESET, HIGH);
+          delay(KEYS_PRESS_NEXT_DELAY);
+          digitalWrite(PIN_RESET, LOW);
+        }
+        else if (keys[i] == CHAR_PIN_POWER) {
+          //activate power pin
+          digitalWrite(PIN_POWER, HIGH);
+          delay(KEYS_PRESS_NEXT_DELAY);
+          digitalWrite(PIN_POWER, LOW);
+        }
+      }
+      i++;
     }
-  }
+  //}
 }
-
-//----- power/reset ------------------------------------------------------------------------
-
-//pin for mainboard reset switch
-#define PIN_RESET 6
-//pin for mainboard power switch
-#define PIN_POWER 7
 
 //----- buttons ----------------------------------------------------------------------------
 
@@ -52,15 +80,16 @@ void keyboardSendString(byte keys[5])
 #define PLAYER_2 4
 
 //pin numbers for buttons
-static const byte PIN_BUTTON[BUTTONS_NUMBER_OF] = {11, 2, 3, 4, 5};
+const byte PIN_BUTTON[BUTTONS_NUMBER_OF] = {11, 2, 3, 4, 5};
 
-//characters sent when a button is pressed
-byte buttonShortPressedString[BUTTONS_NUMBER_OF][KEYS_NUMBER_OF] = {{0, 0, 0, 0, 0}, {0, 0, 0, 0, 0}, {0, 0, 0, 0, 0}, {0, 0, 0, 0, 0}, {0, 0, 0, 0, 0}};
-byte buttonLongPressedString[BUTTONS_NUMBER_OF][KEYS_NUMBER_OF] = {{0, 0, 0, 0, 0}, {0, 0, 0, 0, 0}, {0, 0, 0, 0, 0}, {0, 0, 0, 0, 0}, {0, 0, 0, 0, 0}};
+//characters sent when a button is pressed. the numbers >= 250 are currently reserved for hardware functions
+//atm 254=RESET and 255=POWER pin are supported
+byte buttonShortPressedString[BUTTONS_NUMBER_OF][KEYS_NUMBER_OF] = {{65, 0, 0, 0, 0}, {66, 0, 0, 0, 0}, {67, 0, 0, 0, 0}, {68, 0, 0, 0, 0}, {69, 0, 0, 0, 0}};
+byte buttonLongPressedString[BUTTONS_NUMBER_OF][KEYS_NUMBER_OF] = {{97, 0, 0, 0, 0}, {98, 0, 0, 0, 0}, {99, 0, 0, 0, 0}, {100, 0, 0, 0, 0}, {101, 0, 0, 0, 0}};
 
 //button press durations in ms
-#define RELEASE_DURATION 100
-#define SHORT_PRESS_DURATION 200
+#define RELEASE_DURATION 50
+#define SHORT_PRESS_DURATION 100
 #define LONG_PRESS_DURATION 5000
 
 //button state variables. PIN_REJECT_BUTTON, PIN_EXIT_RESET, PIN_PAUSE_CHEAT, PIN_PLAYER_1, PIN_PLAYER_2
@@ -74,7 +103,7 @@ void buttonsReadState()
 {
   //the state must be button signal high, hold high SHORT_PRESS_DURATION, signal low, hold low RELEASE_DURATION -> valid short press
   //the state must be button signal high, hold high LONG_PRESS_DURATION, signal low, hold low RELEASE_DURATION -> valid long press
-  for (byte i = 0; i < BUTTONS_NUMBER_OF; i++) {
+  for (int i = 0; i < BUTTONS_NUMBER_OF; i++) {
     //check what state the pin is in
     byte state = digitalRead(PIN_BUTTON[i]);
     //check if the state is the same as before
@@ -123,7 +152,7 @@ void buttonsReadState()
 
 void buttonsDoCommands()
 {
-  for (byte i = 0; i < BUTTONS_NUMBER_OF; i++) {
+  for (int i = 0; i < BUTTONS_NUMBER_OF; i++) {
     if (buttonWasPressedLong[i]) {
       keyboardSendString(buttonLongPressedString[i]);
       buttonWasPressedLong[i] = false;
@@ -146,12 +175,12 @@ void buttonsDoCommands()
 #define COIN_2 2
 
 //pin numbers for coins
-static const byte PIN_COIN[COINS_NUMBER_OF] = {8, 9, 10};
+const byte PIN_COIN[COINS_NUMBER_OF] = {8, 9, 10};
 //pin for the signal to reject all coins
 #define PIN_REJECT_COINS 12
 
 //characters sent when a coin is inserted. Coin 1, 2, 3
-byte coinInsertedString[COINS_NUMBER_OF][KEYS_NUMBER_OF] = {{0, 0, 0, 0, 0}, {0, 0, 0, 0, 0}, {0, 0, 0, 0, 0}};
+byte coinInsertedString[COINS_NUMBER_OF][KEYS_NUMBER_OF] = {{70, 0, 0, 0, 0}, {71, 0, 0, 0, 0}, {72, 0, 0, 0, 0}};
 
 //minumum coin signal duration
 #define COIN_INSERT_DURATION 70
@@ -165,7 +194,7 @@ boolean coinWasInserted[COINS_NUMBER_OF] = {false, false, false};
 void coinsReadState()
 {
   //the state must be insert signal on, hold on COIN_INSERT_DURATION, signal off, hold off COIN_INSERT_DURATION -> valid insertion
-  for (byte i = 0; i < COINS_NUMBER_OF; i++) {
+  for (int i = 0; i < COINS_NUMBER_OF; i++) {
     //check what state the pin is in
     byte state = digitalRead(PIN_COIN[i]);
     //check if the state is the same as before
@@ -201,7 +230,7 @@ void coinsReadState()
 
 void coinsDoCommands()
 {
-  for (byte i = 0; i < COINS_NUMBER_OF; i++) {
+  for (int i = 0; i < COINS_NUMBER_OF; i++) {
     if (coinWasInserted[i]) {
       keyboardSendString(coinInsertedString[i]);
       coinWasInserted[i] = false;
@@ -216,95 +245,166 @@ void coinsDoCommands()
 #define COMMAND_SET_BUTTON_SHORT 'S' //set keys sent on short button press. followed by 1 byte button number and KEYS_NUMBER_OF bytes of key codes. unused codes must be 0!
 #define COMMAND_SET_BUTTON_LONG 'L' //set keys sent on short button press. followed by 1 byte button number and KEYS_NUMBER_OF bytes of key codes. unused codes must be 0!
 #define COMMAND_SET_COIN 'C' //set keys sent on coin insertion. followed by 1 byte coin number and KEYS_NUMBER_OF bytes of key codes. unused codes must be 0!
-#define COMMAND_OK "OK" //Response sent when a command is detected.
-#define COMMAND_NOK "NOK" //Response sent when the command or its arguments are not ok.
-
-static byte serialCommand = COMMAND_UNKNOWN;
-static byte serialBytesNeeded = 1;
+#define COMMAND_DUMP_CONFIG 'D' //dump version information and all configured data to serial port after waiting for a short while. for debug purposes.
+#define COMMAND_OK "OK\n" //Response sent when a command is detected.
+#define COMMAND_NOK "NK\n" //Response sent when the command or its arguments are not ok.
+#define COMMAND_TERMINATOR 10 //Terminate lines with LF aka '\n'
 
 void serialReadCommand()
 {
-  if (Serial.available() >= serialBytesNeeded) {
-    //check if command or data
-    if (serialCommand == COMMAND_UNKNOWN) {
-      //read command byte
-      byte serialCommand = Serial.read();
-      switch (serialCommand) {
+  static int serialCommand = COMMAND_UNKNOWN;
+  static int serialBytesNeeded = 1;
+  //check if command or data
+  if (Serial.available() >= serialBytesNeeded && serialCommand == COMMAND_UNKNOWN) {
+    //read command byte
+    serialCommand = Serial.read();
+    switch (serialCommand) {
+      case COMMAND_SET_COIN_REJECT:
+        //we expect another byte stating true or false here
+        //Keyboard.print("Coin reject commmand");
+        serialBytesNeeded = 2;
+        break;
+      case COMMAND_SET_BUTTON_SHORT:
+      case COMMAND_SET_BUTTON_LONG:
+      case COMMAND_SET_COIN:
+        //we expect another byte with the button number here and then 1-5 key codes
+        //Keyboard.print("Button/coin command");
+        serialBytesNeeded = 3;
+        break;
+      case COMMAND_DUMP_CONFIG:
+        //flush commands
+        while (Serial.available() > 0) {
+          Serial.read();
+        }
+        //wait for next command
+        serialCommand = COMMAND_UNKNOWN;
+        serialBytesNeeded = 1;
+        //dump configuration
+        Serial.print("MAMEduino v0.9.0.0\n");
+        for (int ib = 0; ib < BUTTONS_NUMBER_OF; ib++) {
+          Serial.print("Button #");
+          Serial.print(ib);
+          Serial.print(" short: ");
+          for (int ik = 0; ik < BUTTONS_NUMBER_OF; ik++) {
+            Serial.print(buttonShortPressedString[ib][ik]); Serial.print(' ');
+          }
+          Serial.print("long: ");
+          for (int ik = 0; ik < BUTTONS_NUMBER_OF; ik++) {
+            Serial.print(buttonLongPressedString[ib][ik]); Serial.print(' ');
+          }
+          Serial.println();
+        }
+        for (int ic = 0; ic < COINS_NUMBER_OF; ic++) {
+          Serial.print("Coin #");
+          Serial.print(ic);
+          Serial.print(": ");
+          for (int ik = 0; ik < BUTTONS_NUMBER_OF; ik++) {
+            Serial.print(coinInsertedString[ic][ik]); Serial.print(' ');
+          }
+          Serial.println();
+        }
+        Serial.print("Coin rejection is ");
+        if (digitalRead(PIN_REJECT_COINS) == HIGH) {
+          Serial.println("ON");
+        }
+        else {
+          Serial.println("OFF");
+        }
+        //send positive response
+        Serial.print(COMMAND_OK);
+        break;
+      default:
+        //unknown command. flush port
+        //Keyboard.print("Bad command");
+        while (Serial.available() > 0) {
+          Serial.read();
+        }
+        //read until we find a valid command
+        serialCommand = COMMAND_UNKNOWN;
+        serialBytesNeeded = 1;
+        //invalid command. send negative response
+        Serial.write(COMMAND_NOK);
+        return;
+    }
+  }
+  if (Serial.available() >= serialBytesNeeded && serialCommand != COMMAND_UNKNOWN) {
+    //read data depending on command
+    switch (serialCommand) {
         case COMMAND_SET_COIN_REJECT:
           //we expect another byte stating true or false here
-          serialBytesNeeded = 1;
+          if (Serial.read() > 0) {
+            //Keyboard.print(" ON");
+            digitalWrite(PIN_REJECT_COINS, HIGH);
+          }
+          else {
+            //Keyboard.print(" OFF");
+            digitalWrite(PIN_REJECT_COINS, LOW);
+          }
+	  //valid command. send positive response
+	  Serial.write(COMMAND_OK);
           break;
         case COMMAND_SET_BUTTON_SHORT:
-        case COMMAND_SET_BUTTON_LONG:
-        case COMMAND_SET_COIN:
+        case COMMAND_SET_BUTTON_LONG: {
           //we expect another byte with the button number here and then 5 key codes
-          serialBytesNeeded = KEYS_NUMBER_OF + 1;
-          break;
-        default:
-          //unknown command. read until we find a valid command
-          serialCommand = COMMAND_UNKNOWN;
-          serialBytesNeeded = 1;
-		  //invalid command. send negative response
-		  Serial.write(COMMAND_NOK);
-      }
-    }
-    if (serialCommand != COMMAND_UNKNOWN) {
-      //read data depending on command
-      switch (serialCommand) {
-          case COMMAND_SET_COIN_REJECT:
-            //we expect another byte stating true or false here
-            if (Serial.read() > 0) {
-              digitalWrite(PIN_REJECT_COINS, HIGH);
-            }
-            else {
-              digitalWrite(PIN_REJECT_COINS, LOW);
-            }
-			//valid command. send response
-			Serial.write(COMMAND_OK);
-            break;
-          case COMMAND_SET_BUTTON_SHORT:
-          case COMMAND_SET_BUTTON_LONG: {
-            //we expect another byte with the button number here and then 5 key codes
-            byte button = Serial.read();
-            if (button < 0) {
-              button = 0;
-            }
-            else if (button > (BUTTONS_NUMBER_OF - 1)) {
-              button = (BUTTONS_NUMBER_OF - 1);
-            }
-            for (byte i = 0; i < KEYS_NUMBER_OF; i++) {
+          int button = Serial.read();
+          if (button < 0) {
+            button = 0;
+          }
+          else if (button > (BUTTONS_NUMBER_OF - 1)) {
+            button = (BUTTONS_NUMBER_OF - 1);
+          }
+          //Keyboard.print(" "); Keyboard.print(button);
+          int i = 0;
+          int key;
+          do {
+            key = Serial.read();
+            if (key != COMMAND_TERMINATOR) {
               if (COMMAND_SET_BUTTON_SHORT == serialCommand) {
-                buttonShortPressedString[button][i] = Serial.read();
+                buttonShortPressedString[button][i] = key;
               }
               else if (COMMAND_SET_BUTTON_LONG == serialCommand) {
-                buttonLongPressedString[button][i] = Serial.read();
+                buttonLongPressedString[button][i] = key;
               }
+              i++;
             }
-			//valid command. send response
-			Serial.write(COMMAND_OK);
-            break;
+            //Keyboard.print(" "); Keyboard.print(key);
+          } while ((i < KEYS_NUMBER_OF) && (key != COMMAND_TERMINATOR));
+	  //valid command. send positive response
+	  Serial.write(COMMAND_OK);
+          break;
+        }
+        case COMMAND_SET_COIN: {
+          //we expect another byte with the coin number here and then 5 key codes
+          int coin = Serial.read();
+          if (coin < 0) {
+            coin = 0;
           }
-          case COMMAND_SET_COIN: {
-            //we expect another byte with the coin number here and then 5 key codes
-            byte coin = Serial.read();
-            if (coin < 0) {
-              coin = 0;
-            }
-            else if (coin > (COINS_NUMBER_OF - 1)) {
-              coin = (COINS_NUMBER_OF - 1);
-            }
-            for (byte i = 0; i < KEYS_NUMBER_OF; i++) {
-              coinInsertedString[coin][i] = Serial.read();
-            }
-			//valid command. send response
-			Serial.write(COMMAND_OK);
-            break;
+          else if (coin > (COINS_NUMBER_OF - 1)) {
+            coin = (COINS_NUMBER_OF - 1);
           }
-      }
-      //finished. wait for next command
-      serialCommand = COMMAND_UNKNOWN;
-      serialBytesNeeded = 1;
+          //Keyboard.print(" "); Keyboard.print(coin);
+          int i = 0;
+          int key;
+          do {
+            key = Serial.read();
+            if (key != COMMAND_TERMINATOR) {
+              coinInsertedString[coin][i] = key;
+              i++;
+            }
+            //Keyboard.print(" "); Keyboard.print(key);
+          } while ((i < KEYS_NUMBER_OF) && (key != COMMAND_TERMINATOR));
+	  //valid command. send positive response
+	  Serial.write(COMMAND_OK);
+          break;
+        }
     }
+    //finished. flush port
+    while (Serial.available() > 0) {
+      Serial.read();
+    }
+    //wait for next command
+    serialCommand = COMMAND_UNKNOWN;
+    serialBytesNeeded = 1;
   }
 }
 
@@ -324,17 +424,17 @@ void setup()
   //setup coin I/O pins
   pinMode(PIN_REJECT_COINS, OUTPUT);
   digitalWrite(PIN_REJECT_COINS, HIGH); //startup rejecting all coins
-  for (byte i = 0; i < COINS_NUMBER_OF; i++) {
+  for (int i = 0; i < COINS_NUMBER_OF; i++) {
     pinMode(PIN_COIN[i], INPUT_PULLUP);
   }
 
   //setup button input pins
-  for (byte i = 0; i < BUTTONS_NUMBER_OF; i++) {
+  for (int i = 0; i < BUTTONS_NUMBER_OF; i++) {
     pinMode(PIN_BUTTON[i], INPUT_PULLUP);
   }
 
   //open the serial port
-  Serial.begin(9600);
+  Serial.begin(38400);
 
   //initialize control over the keyboard
   Keyboard.begin();

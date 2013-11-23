@@ -1,9 +1,11 @@
 #include <string>
 #include <map>
+#include <vector>
 #include <iostream>
 #include <sstream>
 
 #include <stdio.h>
+#include <string.h>
 #include <unistd.h>
 #include <fcntl.h>
 #include <termios.h>
@@ -18,22 +20,23 @@
 #define MAX_COIN_INDEX 2 //!<coin indices 0-2 are supported
 #define MAX_NR_OF_KEYS 5 //!<1-5 keys can be sent per button press or coin insertion
 
-enum Command {SET_COIN_REJECT, SET_BUTTON_SHORT, SET_BUTTON_LONG, SET_COIN, BAD_COMMAND};
+enum Command {SET_COIN_REJECT, SET_BUTTON_SHORT, SET_BUTTON_LONG, SET_COIN, DUMP_CONFIG, BAD_COMMAND};
 //SET_COIN_REJECT 'R' --> set coin rejection to off (0b) or on (> 0b)
 //SET_BUTTON_SHORT 'S' --> set keys sent on short button press. followed by 1 byte button number and KEYS_NUMBER_OF bytes of key codes. unused codes must be 0!
 //SET_BUTTON_LONG 'L' --> set keys sent on short button press. followed by 1 byte button number and KEYS_NUMBER_OF bytes of key codes. unused codes must be 0!
 //SET_COIN 'C' --> set keys sent on coin insertion. followed by 1 byte coin number and KEYS_NUMBER_OF bytes of key codes. unused codes must be 0!
-#define COMMAND_OK "OK" //!<Response sent when a command is detected.
-#define COMMAND_NOK "NOK" //!<Response sent when the command or its arguments are not ok.
+//DUMP_CONFIG 'D' --> dump version information and all configured data to serial port after waiting for a short while. for debug purposes.
+#define COMMAND_OK "OK\n" //!<Response sent when a command is detected.
+#define COMMAND_NOK "NK\n" //!<Response sent when the command or its arguments are not ok.
+#define COMMAND_TERMINATOR 10 //!<Command terminator is LF aka '\n'
 
-std::map<Command, unsigned char> commandMap; //!<Maps arduino commands to their serial terminal values.
-std::map<std::string, unsigned char> keyNameMap; //!<Maps key name strings to their unsigned char value.
-std::string serialPortName = "/dev/ttyUSB0";
+std::map<Command, uint8_t> commandMap; //!<Maps arduino commands to their serial terminal values.
+std::map<std::string, uint8_t> keyNameMap; //!<Maps key name strings to their unsigned char value.
 
 Command command = BAD_COMMAND; //!<The command that was passed on the command line.
-unsigned char commandChar = 0; //!<The char for the command selected.
-unsigned char deviceIndex = 0; //!<The index of the coin or button adressed.
-unsigned char commandArguments[MAX_NR_OF_KEYS] = {0,0,0,0,0}; //!<The keys that should be pressed, or 0/1 for the button reject.
+std::vector<uint8_t> commandData; //string containing the whole command
+
+std::string serialPortName = "/dev/ttyUSB0";
 
 //---------------------------------------------------------------------------------------------------------------------------
 
@@ -44,6 +47,7 @@ void setup()
     commandMap[SET_BUTTON_SHORT] = 'S';
     commandMap[SET_BUTTON_LONG] = 'L';
     commandMap[SET_COIN] = 'C';
+    commandMap[DUMP_CONFIG] = 'D';
     //set names for keys that are read from the command line and their value sent to the arduino
     keyNameMap["LCTRL"] = 128;
     keyNameMap["LSHIFT"] = 129;
@@ -79,6 +83,8 @@ void setup()
     keyNameMap["F10"] = 203;
     keyNameMap["F11"] = 204;
     keyNameMap["F12"] = 205;
+    keyNameMap["PIN_RESET"] = 254;
+    keyNameMap["PIN_POWER"] = 255;
 }
 
 void printVersion()
@@ -95,12 +101,16 @@ void printUsage()
     std::cout << ConsoleStyle(ConsoleStyle::CYAN) << "-s BUTTON# KEY ..." << ConsoleStyle() << " - Set keyboard keys to send when button is SHORT-pressed."  << std::endl;
     std::cout << ConsoleStyle(ConsoleStyle::CYAN) << "-l BUTTON# KEY ..." << ConsoleStyle() << " - Set keyboard keys to send when button is LONG-pressed."  << std::endl;
     std::cout << ConsoleStyle(ConsoleStyle::CYAN) << "-c COIN# KEY ..." << ConsoleStyle() << " - Set keyboard keys to send when coin is inserted." << std::endl;
+    std::cout << ConsoleStyle(ConsoleStyle::CYAN) << "-d " << ConsoleStyle() << " - Dump version and current configuration of Arduino program." << std::endl;
     std::cout << "Currently valid buttons: 0-4." << std::endl;
     std::cout << "Currently valid coins: 0-2." << std::endl;
     std::cout << "Up to 5 keys are supported. Special keys are referenced by their names: " << std::endl;
     std::cout << "  LCTRL, LSHIFT, LALT, LGUI, RCTRL, RSHIFT, RALT, RGUI," << std::endl;
     std::cout << "  UP, DOWN, LEFT, RIGHT, BACKSPACE, TAB, RETURN, ESC," << std::endl;
     std::cout << "  INSERT, DELETE, PAGEUP, PAGEDOWN, HOME, END, F1-F12" << std::endl;
+    std::cout << "Also the reset and power pin/button can be accessed: " << std::endl;
+    std::cout << "  PIN_RESET, PIN_POWER" << std::endl;
+    std::cout << "It makes no sense to send more than one \"key press\" here..." << std::endl;
     std::cout << "Examples:" << std::endl;
     std::cout << "mameduino /dev/ttyUSB0 -r on (turn coin rejection on)" << std::endl;
     std::cout << "mameduino /dev/ttyS0 -s 0 UP UP LEFT (send cursor keys for button 0)" << std::endl;
@@ -119,7 +129,8 @@ bool readKeys(int argc, const char * argv[], int startIndex)
                 auto keyIt = keyNameMap.find(key);
                 if (keyIt != keyNameMap.cend()) {
                     //found. append to command arguments
-                    commandArguments[argumentIndex++] = keyIt->second;
+                    commandData.push_back(keyIt->second);
+                    argumentIndex++;
                 }
                 else {
                     //not found. complain to user
@@ -129,7 +140,8 @@ bool readKeys(int argc, const char * argv[], int startIndex)
             }
             else {
                 //simple character. append to command arguments
-                commandArguments[argumentIndex++] = key.at(0);
+                commandData.push_back(key.at(0));
+                argumentIndex++;
             }
         }
         return true;
@@ -148,25 +160,30 @@ bool readArguments(int argc, const char * argv[])
         serialPortName = argument;
     }
     else {
-        std::cout << ConsoleStyle(ConsoleStyle::RED) << "Error: Firs argument must be a serial port device string." << ConsoleStyle() << std::endl;
+        std::cout << ConsoleStyle(ConsoleStyle::RED) << "Error: First argument must be a serial port device string." << ConsoleStyle() << std::endl;
         return false;
     }
     for(int i = 2; i < argc;) {
         //read argument from list
         argument = argv[i++];
         //check what it is
-        if (argument == "-r") {
+        if (argument == "-d") {
+            command = DUMP_CONFIG;
+			commandData.push_back(commandMap[command]);
+			return true;
+        }
+        else if (argument == "-r") {
             //czeck if we have another argument
             if (i < argc) {
                 //read next argument: "on" or "off"
-                std::string onoff = argv[i];
-                if (onoff != "on" || onoff != "off") {
-                    std::cout << ConsoleStyle(ConsoleStyle::RED) << "Error: Button reject argument must be \"on\" or \"off\"." << ConsoleStyle() << std::endl;
+                std::string onoff = argv[i++];
+                if (onoff != "on" && onoff != "off") {
+                    std::cout << ConsoleStyle(ConsoleStyle::RED) << "Error: Button reject argument was \"" << onoff << "\", but must be \"on\" or \"off\"." << ConsoleStyle() << std::endl;
                     return false;
                 }
                 command = SET_COIN_REJECT;
-				commandChar = commandMap[command];
-                commandArguments[0] = onoff == "on" ? 1 : 0;
+				commandData.push_back(commandMap[command]);
+				commandData.push_back(onoff == "on" ? 1 : 0);
                 return true;
             }
             else {
@@ -175,19 +192,20 @@ bool readArguments(int argc, const char * argv[])
         }
         else if (argument == "-s" || argument == "-l") {
             //check if we have at least two more arguments
-            if ((i + 2) < argc) {
+            if ((i + 1) < argc) {
                 //read next argument: button index
-                int value;
+                int buttonIndex;
                 std::stringstream tempstream(argv[i++]);
-                tempstream >> value;
-                if (value < 0 || value > MAX_BUTTON_INDEX) {
-                    std::cout << ConsoleStyle(ConsoleStyle::RED) << "Error: Button index must be 0-" << MAX_BUTTON_INDEX << "." << ConsoleStyle() << std::endl;
+                tempstream >> buttonIndex;
+                if (buttonIndex < 0 || buttonIndex > MAX_BUTTON_INDEX) {
+                    std::cout << ConsoleStyle(ConsoleStyle::RED) << "Error: Button index must be 0-" << MAX_BUTTON_INDEX << ", but was " << buttonIndex << "." << ConsoleStyle() << std::endl;
                     return false;
                 }
+                command = argument == "-s" ? SET_BUTTON_SHORT : SET_BUTTON_LONG;
+                commandData.push_back(commandMap[command]);
+                commandData.push_back(static_cast<uint8_t>(buttonIndex));
                 //read next arguments: keys
                 if (readKeys(argc, argv, i)) {
-                    command = argument == "-s" ? SET_BUTTON_SHORT : SET_BUTTON_LONG;
-					commandChar = commandMap[command];
                     return true;
                 }
             }
@@ -197,19 +215,20 @@ bool readArguments(int argc, const char * argv[])
         }
         else if (argument == "-c") {
             //check if we have at least two more arguments
-            if ((i + 2) < argc) {
+            if ((i + 1) < argc) {
                 //read next argument: coin index
-                int value;
+                int coinIndex;
                 std::stringstream tempstream(argv[i++]);
-                tempstream >> value;
-                if (value < 0 || value > MAX_COIN_INDEX) {
-                    std::cout << "Error: Coin index must be 0-" << MAX_COIN_INDEX << "." << ConsoleStyle() << std::endl;
+                tempstream >> coinIndex;
+                if (coinIndex < 0 || coinIndex > MAX_COIN_INDEX) {
+                    std::cout << ConsoleStyle(ConsoleStyle::RED) << "Error: Coin index must be 0-" << MAX_COIN_INDEX << ", but was " << coinIndex << "." << ConsoleStyle() << std::endl;
                     return false;
                 }
+                command = SET_COIN;
+				commandData.push_back(commandMap[command]);
+				commandData.push_back(static_cast<uint8_t>(coinIndex));
                 //read next arguments: keys
-                if (readKeys(argc, argv, i)) {
-                    command = SET_COIN;
-					commandChar = commandMap[command];
+                if (readKeys(argc, argv, i)) {                    
                     return true;
                 }
             }
@@ -248,89 +267,121 @@ int main(int argc, const char * argv[])
     }
 
     std::cout << "Opening serial port " << serialPortName << " ..." << std::endl;
-    int serialPort = open(serialPortName.c_str(), O_RDWR | O_NOCTTY);
+    int serialPort = open(serialPortName.c_str(), O_RDWR | O_NOCTTY | O_NDELAY);
     if (serialPort <= 0) {
 		std::cout << ConsoleStyle(ConsoleStyle::RED) << "Error: Failed to open serial port " << serialPortName << "!" << ConsoleStyle() << std::endl;
 		return -2;
 	}
 
-    // ??? fcntl(fd, F_SETFL, FNDELAY);
-
-	std::cout << "Setting serial port to 9600Bps, 8N1 mode..." << std::endl;
-	//get current terminal options
+	std::cout << "Setting serial port to 38400bps, 8N1 mode..." << std::endl;
+	//store current terminal options
+	termios oldOptions;
+	tcgetattr(serialPort, &oldOptions);
+	//clear new terminal options
 	termios options;
-	tcgetattr(serialPort, &options);
-	//set baud rate to 9600Bps
-	cfsetispeed(&options, B9600);
-	cfsetospeed(&options, B9600);
-	//setup a local connection and enable reading fomr terminal
-	options.c_cflag |= (CLOCAL | CREAD);
-	//set character size to 8 data bits, disable parity and set one stop bit (8N1)
-	options.c_cflag &= ~PARENB;
-	options.c_cflag &= ~CSTOPB;
-	options.c_cflag &= ~CSIZE;
-	options.c_cflag |= CS8;
-	//set terminal to use raw, non-translated data and do no echoing
-	options.c_lflag &= ~(ICANON | ECHO | ECHOE | ISIG);
-	//disable software flow control
-	options.c_iflag &= ~(IXON | IXOFF | IXANY);
-	//choose raw (not processed) output
-	options.c_oflag &= ~OPOST;
+	memset(&options, 0, sizeof(termios));
+	//set baud rate to 38400 Baud
+	cfsetispeed(&options, B38400);
+    cfsetospeed(&options, B38400);
+    //set mode to 8N1
+    options.c_cflag |= (CLOCAL | CREAD); //Enable the receiver and set local mode
+    options.c_cflag &= ~PARENB; //no parity
+    options.c_cflag &= ~CSTOPB; //one stop bit
+    options.c_cflag &= ~CSIZE; //size mask flag
+    options.c_cflag |= CS8; //8 bit
+    //set raw output
+    options.c_oflag &= ~OPOST;
+    //set input mode (non-canonical, no echo)
+    options.c_lflag &= ~(ICANON | ECHO | ECHOE | ISIG);
+    //turn parity off
+    //options.c_iflag = IGNPAR;
+    //flush serial port
+    //tcflush(serialPort, TCIFLUSH);
 	//set terminal options
-	if (tcsetattr(serialPort, TCSAFLUSH, &options) != 0) {
+	if (tcsetattr(serialPort, TCSANOW, &options) != 0) {
 		std::cout << ConsoleStyle(ConsoleStyle::RED) << "Error: Failed set serial port options!" << ConsoleStyle() << std::endl;
 		close(serialPort);
 		return -3;
 	}
 
-	// ??? fcntl(fd, F_SETFL, 0);
-
-	//write command to the port
-	if (!writeToPort(serialPort, &commandChar, sizeof(commandChar))) {
+    //terminate command with a line break
+    commandData.push_back(COMMAND_TERMINATOR);
+    //write command to port
+	std::cout << "Sending command to Arduino..." << std::endl;
+	if (!writeToPort(serialPort, commandData.data(), commandData.size() * sizeof(uint8_t))) {
+		tcsetattr(serialPort, TCSAFLUSH, &oldOptions);
 		close(serialPort);
 		return -4;
 	}
-	//write command arguments to port
-	switch (command) {
-		case SET_COIN_REJECT:
-			if (!writeToPort(serialPort, (const unsigned char *)&commandArguments, sizeof(unsigned char))) {
-				close(serialPort);
-				return -4;
-			}
-			break;
-		case SET_BUTTON_SHORT:
-		case SET_BUTTON_LONG:
-		case SET_COIN:
-			if (!writeToPort(serialPort, &deviceIndex, sizeof(unsigned char)) || !writeToPort(serialPort, (const unsigned char *)&commandArguments, sizeof(commandArguments))) {
-				close(serialPort);
-				return -4;
-			}
-			break;
-	}
-
-	//read response from arduino
-	char buffer[16];
-	ssize_t bytesRead = read(serialPort, &buffer, sizeof(buffer) - 1);
-	if (bytesRead < 2) {
-		//reading failed or response too short
-		std::cout << ConsoleStyle(ConsoleStyle::RED) << "Error: Bad response from Arduino!" << ConsoleStyle() << std::endl;
-		close(serialPort);
-		return -5;
+	
+	std::cout << "Waiting for response from Arduino..." << std::endl;
+	
+	if (command == DUMP_CONFIG) {
+	    //read response from arduino
+	    char buffer[256];
+	    bool responseReceived = false;
+	    while (!responseReceived) {
+	        //sleep some time to transfer commands
+    	    usleep(200*1000);
+	        ssize_t bytesRead = read(serialPort, &buffer, sizeof(buffer) - 1);
+	        if (bytesRead > 0) {
+    	        //response received, null-terminate string
+	    	    buffer[bytesRead] = '\0';
+	    	    std::string response(buffer);
+	    	    //std::cout << response;
+	    	    //split string by '\n's
+	    	    size_t pos = 0;
+                while ((pos = response.find('\n')) != std::string::npos) {
+                    std::string token = response.substr(0, pos + 1);
+                    if (token == COMMAND_OK || token == COMMAND_NOK) {
+                        responseReceived = true;
+                        break;
+                    }
+                    else {
+                        std::cout << token;
+                        response.erase(0, pos + 1);
+                    }
+                }
+	        }
+	    }
 	}
 	else {
-		//response received, null-terminate string
-		buffer[bytesRead] = '\0';
-		std::string response(buffer);
-		if (response == COMMAND_OK) {
-			std::cout << ConsoleStyle(ConsoleStyle::GREEN) << "Succeded." << ConsoleStyle() << std::endl;
-		}
-		else {
-			std::cout << ConsoleStyle(ConsoleStyle::RED) << "Error: Sending the command failed!" << ConsoleStyle() << std::endl;
-			close(serialPort);
-			return -5;
-		}
+	    //sleep some time to transfer commands
+	    usleep(200*1000);
+	    //set block options
+	    options.c_cc[VTIME] = 2; //for for 0.1s per character
+        options.c_cc[VMIN] = 3; //blocking read until 3 chars received
+        tcsetattr(serialPort, TCSANOW, &options);
+	    //read response from arduino
+	    char buffer[256];
+	    ssize_t bytesRead = read(serialPort, &buffer, sizeof(buffer) - 1);
+	    //std::cout << bytesRead << " bytes received." << std::endl;
+	    if (bytesRead < 3) {
+		    //reading failed or response too short
+		    std::cout << ConsoleStyle(ConsoleStyle::RED) << "Error: Bad response from Arduino!" << ConsoleStyle() << std::endl;
+		    tcsetattr(serialPort, TCSAFLUSH, &oldOptions);
+		    close(serialPort);
+		    return -5;
+	    }
+	    else {
+		    //response received, null-terminate string
+		    buffer[bytesRead] = '\0';
+		    std::string response(buffer);
+		    //std::cout << "Arduino responded: \"" << response << "\"." << std::endl;
+		    if (response == COMMAND_OK) {
+			    std::cout << ConsoleStyle(ConsoleStyle::GREEN) << "Succeded." << ConsoleStyle() << std::endl;
+		    }
+		    else {
+			    std::cout << ConsoleStyle(ConsoleStyle::RED) << "Error: Sending the command failed!" << ConsoleStyle() << std::endl;
+			    tcsetattr(serialPort, TCSAFLUSH, &oldOptions);
+			    close(serialPort);
+			    return -5;
+		    }
+	    }
 	}
 
+	//restore old port settings
+	tcsetattr(serialPort, TCSAFLUSH, &oldOptions);
 	//close port and terminate
 	close(serialPort);
 	return 0;
