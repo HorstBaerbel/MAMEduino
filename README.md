@@ -47,7 +47,7 @@ mameduino <SERIAL_DEVICE> <COMMAND>
 **Examples:**  
 Turn coin rejection on: ```mameduino /dev/ttyUSB0 -r on```  
 Set keys to send when button 0 is short-pressed: ```mameduino /dev/ttyS0 -s 0 UP UP LEFT```  
-Set power pin high when button 0 is long-pressed: ```mameduino /dev/ttyS0 -l PIN_POWER```  
+Set power pin high when button 3 is long-pressed: ```mameduino /dev/ttyS0 -l 3 PIN_POWER```  
 Set some keys to send when coin 2 is inserted: ```mameduino /dev/ttyS0 -c 2 b l a r g```  
 Dump current configuration from Arduino: ```mameduino /dev/ttyACM0 -d```  
 
@@ -55,6 +55,7 @@ FAQ
 ========
 **Q:** I have problems because the Arduino keeps on sending commands to the keyboard and I can't stop it.  
 **A:** Pull pin 13 HIGH (connect to 5v). This will re-route all keyboard commands to the serial port.  
+
 **Q:** When I send commands via mameduino to the Arduino communication is not working properly.  
 **A:** Make sure Arduino and PC are using the same MAMEduino version. Reset the Arduino and wait a few seconds for it to boot properly.  
 
