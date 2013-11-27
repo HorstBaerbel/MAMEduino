@@ -88,8 +88,8 @@ const byte PIN_BUTTON[BUTTONS_NUMBER_OF] = {11, 2, 3, 4, 5};
 
 //characters sent when a button is pressed. the numbers >= 250 are currently reserved for hardware functions
 //atm 254=RESET and 255=POWER pin are supported
-byte buttonShortPressedString[BUTTONS_NUMBER_OF][KEYS_NUMBER_OF] = {{65, 0, 0, 0, 0}, {66, 0, 0, 0, 0}, {67, 0, 0, 0, 0}, {68, 0, 0, 0, 0}, {69, 0, 0, 0, 0}};
-byte buttonLongPressedString[BUTTONS_NUMBER_OF][KEYS_NUMBER_OF] = {{97, 0, 0, 0, 0}, {98, 0, 0, 0, 0}, {99, 0, 0, 0, 0}, {100, 0, 0, 0, 0}, {101, 0, 0, 0, 0}};
+byte buttonShortPressedString[BUTTONS_NUMBER_OF][KEYS_NUMBER_OF] = {{0, 0, 0, 0, 0}, {0, 0, 0, 0, 0}, {0, 0, 0, 0, 0}, {0, 0, 0, 0, 0}, {CHAR_PIN_POWER, 0, 0, 0, 0}};
+byte buttonLongPressedString[BUTTONS_NUMBER_OF][KEYS_NUMBER_OF] = {{0, 0, 0, 0, 0}, {0, 0, 0, 0, 0}, {0, 0, 0, 0, 0}, {CHAR_PIN_RESET, 0, 0, 0, 0}, {CHAR_PIN_POWER, 0, 0, 0, 0}};
 
 //button press durations in ms
 #define RELEASE_DURATION 50
@@ -193,7 +193,7 @@ const byte PIN_COIN[COINS_NUMBER_OF] = {8, 9, 10};
 #define PIN_REJECT_COINS 12
 
 //characters sent when a coin is inserted. Coin 1, 2, 3
-byte coinInsertedString[COINS_NUMBER_OF][KEYS_NUMBER_OF] = {{70, 0, 0, 0, 0}, {71, 0, 0, 0, 0}, {72, 0, 0, 0, 0}};
+byte coinInsertedString[COINS_NUMBER_OF][KEYS_NUMBER_OF] = {{0, 0, 0, 0, 0}, {0, 0, 0, 0, 0}, {0, 0, 0, 0, 0}};
 
 //minumum coin signal duration
 #define COIN_INSERT_DURATION 70
