@@ -54,7 +54,7 @@ Dump current configuration from Arduino: ```mameduino /dev/ttyACM0 -d```
 FAQ
 ========
 **Q:** I have problems because the Arduino keeps on sending commands to the keyboard and I can't stop it.  
-**A:** Pull pin 13 HIGH (connect to 5v). This will re-route all keyboard commands to the serial port.  
+**A:** Pull pin 0 LOW (connect to GND). This will re-route all keyboard commands to the serial port.  
 
 **Q:** When I send commands via mameduino to the Arduino communication is not working properly.  
 **A:** Make sure Arduino and PC are using the same MAMEduino version. Reset the Arduino and wait a few seconds for it to boot properly.  

@@ -21,7 +21,7 @@
 //----- keyboard ------------------------------------------------------------------------------------
 
 //pin for redirecting keyboard codes to serial port instead of keyboard
-#define PIN_KEY_TO_SERIAL 13
+#define PIN_KEY_TO_SERIAL 0
 
 //max number of keys that can be defined
 #define KEYS_NUMBER_OF 5
@@ -33,7 +33,7 @@ void keyboardSendString(const byte keys[5])
 {
   int i = 0;
   //SAFETY BELT: check for keyboard to COM redirection
-  if (digitalRead(PIN_KEY_TO_SERIAL) == HIGH) {
+  if (digitalRead(PIN_KEY_TO_SERIAL) == LOW) {
     //on. send to serial port
     while ((i < KEYS_NUMBER_OF) && (keys[i] != 0)) {
       Serial.write(keys[i]);
@@ -435,6 +435,7 @@ void setup()
 
   //setup keyboard redirection pin
   pinMode(PIN_KEY_TO_SERIAL, INPUT);
+  digitalWrite(PIN_KEY_TO_SERIAL, HIGH); //enable pullup
 
   //setup coin I/O pins
   pinMode(PIN_REJECT_COINS, OUTPUT);
