@@ -1,3 +1,11 @@
+//This is the MAMEduino Arduino Button/Coin receptor interface
+//found at http://github.com/HorstBaerbel/MAMEduino
+//Make sure the version of the Arduino code matches that of the PC code, or strange things might happen
+//In case of bugs/question, please file an issue at the github page or
+//drop me an email at: bim.overbohm@googlemail.com
+
+#define PROGRAM_VERSION_STRING "MAMEduino 0.9.9.0"
+
 //----- power/reset ------------------------------------------------------------------------
 
 //pin for mainboard power switch
@@ -21,15 +29,11 @@
 //How long to wait between simulated key presses
 #define KEYS_PRESS_NEXT_DELAY 100
 
-void keyboardSendString(byte keys[5])
+void keyboardSendString(const byte keys[5])
 {
-  /*
-  for (int j = 0; j < 5; j++) {
-    Keyboard.write(keys[j]);
-  }*/
   int i = 0;
-  //check for keyboard to COM redirection
-  /*if (digitalRead(PIN_KEY_TO_SERIAL) == HIGH) {
+  //SAFETY BELT: check for keyboard to COM redirection
+  if (digitalRead(PIN_KEY_TO_SERIAL) == HIGH) {
     //on. send to serial port
     while ((i < KEYS_NUMBER_OF) && (keys[i] != 0)) {
       Serial.write(keys[i]);
@@ -37,7 +41,7 @@ void keyboardSendString(byte keys[5])
     }
     Serial.write('\n');
   }
-  else {*/
+  else {
     //off. send as keystrokes
     while ((i < KEYS_NUMBER_OF) && (keys[i] != 0)) {
       if (keys[i] < 128) {
@@ -66,7 +70,7 @@ void keyboardSendString(byte keys[5])
       }
       i++;
     }
-  //}
+  }
 }
 
 //----- buttons ----------------------------------------------------------------------------
@@ -89,12 +93,12 @@ byte buttonLongPressedString[BUTTONS_NUMBER_OF][KEYS_NUMBER_OF] = {{97, 0, 0, 0,
 
 //button press durations in ms
 #define RELEASE_DURATION 50
-#define SHORT_PRESS_DURATION 100
-#define LONG_PRESS_DURATION 5000
+#define SHORT_PRESS_DURATION 50
+#define LONG_PRESS_DURATION 4000
 
 //button state variables. PIN_REJECT_BUTTON, PIN_EXIT_RESET, PIN_PAUSE_CHEAT, PIN_PLAYER_1, PIN_PLAYER_2
 byte lastButtonPin[BUTTONS_NUMBER_OF] = {LOW, LOW, LOW, LOW, LOW};
-int lastButtonStart[BUTTONS_NUMBER_OF] = {0, 0, 0, 0, 0};
+long int lastButtonStart[BUTTONS_NUMBER_OF] = {0, 0, 0, 0, 0};
 byte currentButtonState[BUTTONS_NUMBER_OF] = {0, 0, 0, 0, 0}; //0 = released, 1 = short pressed, 2 = long pressed
 boolean buttonWasPressedShort[BUTTONS_NUMBER_OF] = {false, false, false, false, false};
 boolean buttonWasPressedLong[BUTTONS_NUMBER_OF] = {false, false, false, false, false};
@@ -103,9 +107,10 @@ void buttonsReadState()
 {
   //the state must be button signal high, hold high SHORT_PRESS_DURATION, signal low, hold low RELEASE_DURATION -> valid short press
   //the state must be button signal high, hold high LONG_PRESS_DURATION, signal low, hold low RELEASE_DURATION -> valid long press
-  for (int i = 0; i < BUTTONS_NUMBER_OF; i++) {
+  int i = 0;
+  for (; i < BUTTONS_NUMBER_OF; i++) {
     //check what state the pin is in
-    byte state = digitalRead(PIN_BUTTON[i]);
+    const byte state = digitalRead(PIN_BUTTON[i]);
     //check if the state is the same as before
     if (state == lastButtonPin[i]) {
       //state is the same. check what it is
@@ -114,12 +119,14 @@ void buttonsReadState()
         if (currentButtonState[i] == 0) {
           //button was released before. check if enough time has passed to get a short/long press
           if ((millis() - lastButtonStart[i]) >= SHORT_PRESS_DURATION) {
+            //Serial.print("Short press button #"); Serial.println(i);
             currentButtonState[i] = 1;
           }
         }
         if (currentButtonState[i] == 1) {
           //button was pressed before. check if enough time has passed to get a long press
           if ((millis() - lastButtonStart[i]) >= LONG_PRESS_DURATION) {
+            //Serial.print("Long press button #"); Serial.println(i);
             currentButtonState[i] = 2;
           }
         }
@@ -129,13 +136,17 @@ void buttonsReadState()
         if (currentButtonState[i] == 1) {
           //button was short pressed and released. was the release long enough
           if ((millis() - lastButtonStart[i]) >= RELEASE_DURATION) {
+            //Serial.print("Short release button #"); Serial.println(i);
             buttonWasPressedShort[i] = true;
+            buttonWasPressedLong[i] = false;
             currentButtonState[i] = 0;
           }
         }
         else if (currentButtonState[i] == 2) {
           //button was pressed and released. was the release long enough
           if ((millis() - lastButtonStart[i]) >= RELEASE_DURATION) {
+            //Serial.print("Long release button #"); Serial.println(i);
+            buttonWasPressedShort[i] = false;
             buttonWasPressedLong[i] = true;
             currentButtonState[i] = 0;
           }
@@ -146,13 +157,15 @@ void buttonsReadState()
       //state changed. store time
       lastButtonStart[i] = millis();
       lastButtonPin[i] = state;
+      //Serial.print(i); Serial.print(" = "); Serial.println(state);
     }
   }
 }
 
 void buttonsDoCommands()
 {
-  for (int i = 0; i < BUTTONS_NUMBER_OF; i++) {
+  int i = 0;
+  for (; i < BUTTONS_NUMBER_OF; i++) {
     if (buttonWasPressedLong[i]) {
       keyboardSendString(buttonLongPressedString[i]);
       buttonWasPressedLong[i] = false;
@@ -187,16 +200,17 @@ byte coinInsertedString[COINS_NUMBER_OF][KEYS_NUMBER_OF] = {{70, 0, 0, 0, 0}, {7
 
 //coin slot state variables. Coin 1, 2, 3
 byte lastCoinPin[COINS_NUMBER_OF] = {LOW, LOW, LOW};
-int lastCoinStart[COINS_NUMBER_OF] = {0, 0, 0};
+long int lastCoinStart[COINS_NUMBER_OF] = {0, 0, 0};
 byte currentCoinState[COINS_NUMBER_OF] = {0, 0, 0}; //0 = released, 1 = inserted
 boolean coinWasInserted[COINS_NUMBER_OF] = {false, false, false};
 
 void coinsReadState()
 {
   //the state must be insert signal on, hold on COIN_INSERT_DURATION, signal off, hold off COIN_INSERT_DURATION -> valid insertion
-  for (int i = 0; i < COINS_NUMBER_OF; i++) {
+  int i = 0;
+  for (; i < COINS_NUMBER_OF; i++) {
     //check what state the pin is in
-    byte state = digitalRead(PIN_COIN[i]);
+    const byte state = digitalRead(PIN_COIN[i]);
     //check if the state is the same as before
     if (state == lastCoinPin[i]) {
       //state is the same. check what it is
@@ -230,7 +244,8 @@ void coinsReadState()
 
 void coinsDoCommands()
 {
-  for (int i = 0; i < COINS_NUMBER_OF; i++) {
+  int i = 0;
+  for (; i < COINS_NUMBER_OF; i++) {
     if (coinWasInserted[i]) {
       keyboardSendString(coinInsertedString[i]);
       coinWasInserted[i] = false;
@@ -280,7 +295,7 @@ void serialReadCommand()
         serialCommand = COMMAND_UNKNOWN;
         serialBytesNeeded = 1;
         //dump configuration
-        Serial.print("MAMEduino v0.9.0.0\n");
+        Serial.println(PROGRAM_VERSION_STRING);
         for (int ib = 0; ib < BUTTONS_NUMBER_OF; ib++) {
           Serial.print("Button #");
           Serial.print(ib);
@@ -424,12 +439,14 @@ void setup()
   //setup coin I/O pins
   pinMode(PIN_REJECT_COINS, OUTPUT);
   digitalWrite(PIN_REJECT_COINS, HIGH); //startup rejecting all coins
-  for (int i = 0; i < COINS_NUMBER_OF; i++) {
+  int i = 0;
+  for (; i < COINS_NUMBER_OF; i++) {
     pinMode(PIN_COIN[i], INPUT_PULLUP);
   }
 
   //setup button input pins
-  for (int i = 0; i < BUTTONS_NUMBER_OF; i++) {
+  i = 0;
+  for (; i < BUTTONS_NUMBER_OF; i++) {
     pinMode(PIN_BUTTON[i], INPUT_PULLUP);
   }
 

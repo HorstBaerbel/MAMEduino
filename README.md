@@ -2,8 +2,8 @@ MAMEduino
 ========
 
 Use an Arduino Leonardo to connect physical (arcade-style) buttons and/or a coin receptor to a PC. The Arduino then sends a configurable number of keypresses to the PC when buttons are pressed or coins are inserted, and can also startup/shutdown or reset the PC with the appropriate pins connected. The keypresses sent can be configured via small console program which currently works on Linux only (tested on Ubuntu 13.10).  
-A Fritzing layout for the connection can be found in [MAMEduino.fzz](https://github.com/HorstBaerbel/MAMEduino/blob/master/MAMEduino.fzz) and the necessary Arduino source code in [MAMEduino/MAMEduino.ino](https://github.com/HorstBaerbel/MAMEduino/blob/master/MAMEduino/MAMEduino.ino).  
-The coin receptor that was used is the [MoneyControls SR3 Type2](https://www.google.de/search?q=MoneyControls+SR3+Type2+datasheet). Other models will probably need adjustments to the Arduino source code or even the electronic interface/wiring.
+A [Fritzing](http://fritzing.org/) layout for the connection can be found in [MAMEduino.fzz](https://github.com/HorstBaerbel/MAMEduino/blob/master/MAMEduino.fzz) and the necessary Arduino source code in [MAMEduino/MAMEduino.ino](https://github.com/HorstBaerbel/MAMEduino/blob/master/MAMEduino/MAMEduino.ino).  
+The coin receptor that was used is the [MoneyControls SR3 Type2](https://www.google.de/search?q=MoneyControls+SR3+Type2+datasheet). Other models will probably need adjustments to the Arduino source code or even the electronic interface/wiring.  
 
 License
 ========
@@ -40,14 +40,23 @@ mameduino <SERIAL_DEVICE> <COMMAND>
 **Currently valid buttons: 0-4.**  
 **Currently valid coins: 0-2.**  
 **Up to 5 keys are currently supported. Special keys are supported by their names:**  
-  LCTRL, LSHIFT, LALT, LGUI, RCTRL, RSHIFT, RALT, RGUI, UP, DOWN, LEFT, RIGHT, BACKSPACE, TAB, RETURN, ESC, INSERT, DELETE, PAGEUP, PAGEDOWN, HOME, END, F1-F12
+  LCTRL, LSHIFT, LALT, LGUI, RCTRL, RSHIFT, RALT, RGUI, UP, DOWN, LEFT, RIGHT, BACKSPACE, TAB, RETURN, ESC, INSERT, DELETE, PAGEUP, PAGEDOWN, HOME, END, F1-F12  
 **Also the reset and power pin/button can be accessed:**  
   PIN_RESET, PIN_POWER (It makes no sense to send more than one "key press" for those...)  
 
 **Examples:**  
 Turn coin rejection on: ```mameduino /dev/ttyUSB0 -r on```  
-Set keys to send when button 0 is pressed: ```mameduino /dev/ttyS0 -s 0 UP UP LEFT```  
-Set keys to send when coin 2 is inserted: ```mameduino /dev/ttyS0 -c 2 b l a r g```  
+Set keys to send when button 0 is short-pressed: ```mameduino /dev/ttyS0 -s 0 UP UP LEFT```  
+Set power pin high when button 0 is long-pressed: ```mameduino /dev/ttyS0 -l PIN_POWER```  
+Set some keys to send when coin 2 is inserted: ```mameduino /dev/ttyS0 -c 2 b l a r g```  
+Dump current configuration from Arduino: ```mameduino /dev/ttyACM0 -d```  
+
+FAQ
+========
+**Q:** I have problems because the Arduino keeps on sending commands to the keyboard and I can't stop it.  
+**A:** Pull pin 13 HIGH (connect to 5v). This will re-route all keyboard commands to the serial port.  
+**Q:** When I send commands via mameduino to the Arduino communication is not working properly.  
+**A:** Make sure Arduino and PC are using the same MAMEduino version. Reset the Arduino and wait a few seconds for it to boot properly.  
 
 I found a bug or have a suggestion
 ========

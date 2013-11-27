@@ -101,7 +101,7 @@ void printUsage()
     std::cout << ConsoleStyle(ConsoleStyle::CYAN) << "-s BUTTON# KEY ..." << ConsoleStyle() << " - Set keyboard keys to send when button is SHORT-pressed."  << std::endl;
     std::cout << ConsoleStyle(ConsoleStyle::CYAN) << "-l BUTTON# KEY ..." << ConsoleStyle() << " - Set keyboard keys to send when button is LONG-pressed."  << std::endl;
     std::cout << ConsoleStyle(ConsoleStyle::CYAN) << "-c COIN# KEY ..." << ConsoleStyle() << " - Set keyboard keys to send when coin is inserted." << std::endl;
-    std::cout << ConsoleStyle(ConsoleStyle::CYAN) << "-d " << ConsoleStyle() << " - Dump version and current configuration of Arduino program." << std::endl;
+    std::cout << ConsoleStyle(ConsoleStyle::CYAN) << "-d" << ConsoleStyle() << " - Dump version and current configuration of Arduino program." << std::endl;
     std::cout << "Currently valid buttons: 0-4." << std::endl;
     std::cout << "Currently valid coins: 0-2." << std::endl;
     std::cout << "Up to 5 keys are supported. Special keys are referenced by their names: " << std::endl;
@@ -195,17 +195,16 @@ bool readArguments(int argc, const char * argv[])
             if ((i + 1) < argc) {
                 //read next argument: button index
                 int buttonIndex;
-                std::stringstream tempstream(argv[i++]);
-                tempstream >> buttonIndex;
-                if (buttonIndex < 0 || buttonIndex > MAX_BUTTON_INDEX) {
-                    std::cout << ConsoleStyle(ConsoleStyle::RED) << "Error: Button index must be 0-" << MAX_BUTTON_INDEX << ", but was " << buttonIndex << "." << ConsoleStyle() << std::endl;
+                std::istringstream tempStream(argv[i]);
+                if (!(tempStream >> buttonIndex) || buttonIndex < 0 || buttonIndex > MAX_BUTTON_INDEX) {
+                    std::cout << ConsoleStyle(ConsoleStyle::RED) << "Error: Button index must be 0-" << MAX_BUTTON_INDEX << ", but was " << argv[i] << "." << ConsoleStyle() << std::endl;
                     return false;
                 }
                 command = argument == "-s" ? SET_BUTTON_SHORT : SET_BUTTON_LONG;
                 commandData.push_back(commandMap[command]);
                 commandData.push_back(static_cast<uint8_t>(buttonIndex));
                 //read next arguments: keys
-                if (readKeys(argc, argv, i)) {
+                if (readKeys(argc, argv, ++i)) {
                     return true;
                 }
             }
@@ -218,17 +217,16 @@ bool readArguments(int argc, const char * argv[])
             if ((i + 1) < argc) {
                 //read next argument: coin index
                 int coinIndex;
-                std::stringstream tempstream(argv[i++]);
-                tempstream >> coinIndex;
-                if (coinIndex < 0 || coinIndex > MAX_COIN_INDEX) {
-                    std::cout << ConsoleStyle(ConsoleStyle::RED) << "Error: Coin index must be 0-" << MAX_COIN_INDEX << ", but was " << coinIndex << "." << ConsoleStyle() << std::endl;
+                std::istringstream tempStream(argv[i]);
+                if (!(tempStream >> coinIndex) || coinIndex < 0 || coinIndex > MAX_COIN_INDEX) {
+                    std::cout << ConsoleStyle(ConsoleStyle::RED) << "Error: Coin index must be 0-" << MAX_COIN_INDEX << ", but was " << argv[i] << "." << ConsoleStyle() << std::endl;
                     return false;
                 }
                 command = SET_COIN;
 				commandData.push_back(commandMap[command]);
 				commandData.push_back(static_cast<uint8_t>(coinIndex));
                 //read next arguments: keys
-                if (readKeys(argc, argv, i)) {                    
+                if (readKeys(argc, argv, ++i)) {                    
                     return true;
                 }
             }
