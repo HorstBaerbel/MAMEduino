@@ -49,6 +49,8 @@ void setup()
     commandMap[SET_COIN] = 'C';
     commandMap[DUMP_CONFIG] = 'D';
     //set names for keys that are read from the command line and their value sent to the arduino
+    keyNameMap["NULL"] = 0; //clear all key bindings for a press mode of a button
+    keyNameMap["CLEAR"] = 0; //clear all key bindings for a press mode of a button
     keyNameMap["LCTRL"] = 128;
     keyNameMap["LSHIFT"] = 129;
     keyNameMap["LALT"] = 130;
@@ -111,9 +113,12 @@ void printUsage()
     std::cout << "Also the reset and power pin/button can be accessed: " << std::endl;
     std::cout << "  PIN_RESET, PIN_POWER" << std::endl;
     std::cout << "It makes no sense to send more than one \"key press\" here..." << std::endl;
+    std::cout << "Your can clear all key commands by the keywords:" << std::endl;
+    std::cout << "  NULL or CLEAR" << std::endl;
     std::cout << "Examples:" << std::endl;
     std::cout << "mameduino /dev/ttyUSB0 -r on (turn coin rejection on)" << std::endl;
-    std::cout << "mameduino /dev/ttyS0 -s 0 UP UP LEFT (send cursor keys for button 0)" << std::endl;
+    std::cout << "mameduino /dev/ttyS0 -s 0 UP LEFT (set cursor keys for button 0, short press)" << std::endl;
+    std::cout << "mameduino /dev/ttyACM0 -l 1 CLEAR (remove all keys for button 1, long press)" << std::endl;
     std::cout << "mameduino /dev/ttyS0 -c 2 b l a r g (send \"blarg\" for coin 2)" << std::endl;
 }
 
@@ -320,7 +325,7 @@ int main(int argc, const char * argv[])
 	    bool responseReceived = false;
 	    while (!responseReceived) {
 	        //sleep some time to transfer commands
-    	    usleep(200*1000);
+    	    usleep(100*1000);
 	        ssize_t bytesRead = read(serialPort, &buffer, sizeof(buffer) - 1);
 	        if (bytesRead > 0) {
     	        //response received, null-terminate string
@@ -332,22 +337,27 @@ int main(int argc, const char * argv[])
                 while ((pos = response.find('\n')) != std::string::npos) {
                     std::string token = response.substr(0, pos + 1);
                     if (token == COMMAND_OK || token == COMMAND_NOK) {
+                        //end command. stop waiting for data and clear rest of response
                         responseReceived = true;
+                        response.clear();
                         break;
                     }
                     else {
+                        //output data read from serial
                         std::cout << token;
                         response.erase(0, pos + 1);
                     }
                 }
+                //print remaining response data
+                std::cout << response;
 	        }
 	    }
 	}
 	else {
 	    //sleep some time to transfer commands
-	    usleep(200*1000);
+	    usleep(100*1000);
 	    //set block options
-	    options.c_cc[VTIME] = 2; //for for 0.1s per character
+	    options.c_cc[VTIME] = 1; //for for 0.05s per character
         options.c_cc[VMIN] = 3; //blocking read until 3 chars received
         tcsetattr(serialPort, TCSANOW, &options);
 	    //read response from arduino

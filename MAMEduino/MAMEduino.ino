@@ -4,7 +4,7 @@
 //In case of bugs/question, please file an issue at the github page or
 //drop me an email at: bim.overbohm@googlemail.com
 
-#define PROGRAM_VERSION_STRING "MAMEduino 0.9.9.0"
+#define PROGRAM_VERSION_STRING "MAMEduino 0.9.9.1"
 
 //----- power/reset ------------------------------------------------------------------------
 
@@ -265,6 +265,63 @@ void coinsDoCommands()
 #define COMMAND_NOK "NK\n" //Response sent when the command or its arguments are not ok.
 #define COMMAND_TERMINATOR 10 //Terminate lines with LF aka '\n'
 
+void clearKeys(byte array[KEYS_NUMBER_OF])
+{
+  for (int i = 0; i < KEYS_NUMBER_OF; i++) {
+    array[i] = 0;
+  }
+}
+
+void serialReadKeys(byte array[KEYS_NUMBER_OF])
+{
+  //clear all buttons first
+  clearKeys(array);
+  int i = 0;
+  int key;
+  do {
+    key = Serial.read();
+    if (key != COMMAND_TERMINATOR) {
+      array[i] = key;
+      i++;
+    }
+    //Keyboard.print(" "); Keyboard.print(key);
+  } while ((i < KEYS_NUMBER_OF) && (key != COMMAND_TERMINATOR));
+}
+
+void serialDumpConfig()
+{
+  Serial.println(PROGRAM_VERSION_STRING);
+  for (int ib = 0; ib < BUTTONS_NUMBER_OF; ib++) {
+    Serial.print("Button #");
+    Serial.print(ib);
+    Serial.print(" short: ");
+    for (int ik = 0; ik < BUTTONS_NUMBER_OF; ik++) {
+      Serial.print(buttonShortPressedString[ib][ik]); Serial.print(' ');
+    }
+    Serial.print("long: ");
+    for (int ik = 0; ik < BUTTONS_NUMBER_OF; ik++) {
+      Serial.print(buttonLongPressedString[ib][ik]); Serial.print(' ');
+    }
+    Serial.println();
+  }
+  for (int ic = 0; ic < COINS_NUMBER_OF; ic++) {
+    Serial.print("Coin #");
+    Serial.print(ic);
+    Serial.print(": ");
+    for (int ik = 0; ik < BUTTONS_NUMBER_OF; ik++) {
+      Serial.print(coinInsertedString[ic][ik]); Serial.print(' ');
+    }
+    Serial.println();
+  }
+  Serial.print("Coin rejection is ");
+  if (digitalRead(PIN_REJECT_COINS) == HIGH) {
+    Serial.println("ON");
+  }
+  else {
+    Serial.println("OFF");
+  }
+}
+
 void serialReadCommand()
 {
   static int serialCommand = COMMAND_UNKNOWN;
@@ -295,36 +352,7 @@ void serialReadCommand()
         serialCommand = COMMAND_UNKNOWN;
         serialBytesNeeded = 1;
         //dump configuration
-        Serial.println(PROGRAM_VERSION_STRING);
-        for (int ib = 0; ib < BUTTONS_NUMBER_OF; ib++) {
-          Serial.print("Button #");
-          Serial.print(ib);
-          Serial.print(" short: ");
-          for (int ik = 0; ik < BUTTONS_NUMBER_OF; ik++) {
-            Serial.print(buttonShortPressedString[ib][ik]); Serial.print(' ');
-          }
-          Serial.print("long: ");
-          for (int ik = 0; ik < BUTTONS_NUMBER_OF; ik++) {
-            Serial.print(buttonLongPressedString[ib][ik]); Serial.print(' ');
-          }
-          Serial.println();
-        }
-        for (int ic = 0; ic < COINS_NUMBER_OF; ic++) {
-          Serial.print("Coin #");
-          Serial.print(ic);
-          Serial.print(": ");
-          for (int ik = 0; ik < BUTTONS_NUMBER_OF; ik++) {
-            Serial.print(coinInsertedString[ic][ik]); Serial.print(' ');
-          }
-          Serial.println();
-        }
-        Serial.print("Coin rejection is ");
-        if (digitalRead(PIN_REJECT_COINS) == HIGH) {
-          Serial.println("ON");
-        }
-        else {
-          Serial.println("OFF");
-        }
+        serialDumpConfig();
         //send positive response
         Serial.print(COMMAND_OK);
         break;
@@ -369,21 +397,12 @@ void serialReadCommand()
             button = (BUTTONS_NUMBER_OF - 1);
           }
           //Keyboard.print(" "); Keyboard.print(button);
-          int i = 0;
-          int key;
-          do {
-            key = Serial.read();
-            if (key != COMMAND_TERMINATOR) {
-              if (COMMAND_SET_BUTTON_SHORT == serialCommand) {
-                buttonShortPressedString[button][i] = key;
-              }
-              else if (COMMAND_SET_BUTTON_LONG == serialCommand) {
-                buttonLongPressedString[button][i] = key;
-              }
-              i++;
-            }
-            //Keyboard.print(" "); Keyboard.print(key);
-          } while ((i < KEYS_NUMBER_OF) && (key != COMMAND_TERMINATOR));
+          if (COMMAND_SET_BUTTON_SHORT == serialCommand) {
+            serialReadKeys(buttonShortPressedString[button]);
+          }
+          else if (COMMAND_SET_BUTTON_LONG == serialCommand) {
+            serialReadKeys(buttonLongPressedString[button]);
+          }
 	  //valid command. send positive response
 	  Serial.write(COMMAND_OK);
           break;
@@ -398,16 +417,7 @@ void serialReadCommand()
             coin = (COINS_NUMBER_OF - 1);
           }
           //Keyboard.print(" "); Keyboard.print(coin);
-          int i = 0;
-          int key;
-          do {
-            key = Serial.read();
-            if (key != COMMAND_TERMINATOR) {
-              coinInsertedString[coin][i] = key;
-              i++;
-            }
-            //Keyboard.print(" "); Keyboard.print(key);
-          } while ((i < KEYS_NUMBER_OF) && (key != COMMAND_TERMINATOR));
+          serialReadKeys(coinInsertedString[coin]);
 	  //valid command. send positive response
 	  Serial.write(COMMAND_OK);
           break;
