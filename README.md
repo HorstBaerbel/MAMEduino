@@ -35,21 +35,24 @@ mameduino <SERIAL_DEVICE> <COMMAND>
 - -l BUTTON# KEY ... Set keyboard keys to send when button is LONG-pressed (~4s).
 - -c COIN# KEY ... Set keyboard keys to send when coin is inserted.
 - -d Dump version and current configuration of Arduino program.
-- -v Be verbose.
+- -h/-?/--help Show help.
 
 **Currently valid buttons: 0-4.**  
 **Currently valid coins: 0-2.**  
-**Up to 5 keys are currently supported. Special keys are supported by their names:**  
+**Up to 5 KEYs are currently supported. Special KEYs are supported by their names:**  
   LCTRL, LSHIFT, LALT, LGUI, RCTRL, RSHIFT, RALT, RGUI, UP, DOWN, LEFT, RIGHT, BACKSPACE, TAB, RETURN, ESC, INSERT, DELETE, PAGEUP, PAGEDOWN, HOME, END, F1-F12  
 **Also the reset and power pin/button can be accessed:**  
   PIN_RESET, PIN_POWER (It makes no sense to send more than one "key press" for those...)  
+**You can clear key bindings for a button/coin with the keyword:**  
+  CLEAR  
 
 **Examples:**  
 Turn coin rejection on: ```mameduino /dev/ttyUSB0 -r on```  
-Set keys to send when button 0 is short-pressed: ```mameduino /dev/ttyS0 -s 0 UP UP LEFT```  
-Set power pin high when button 3 is long-pressed: ```mameduino /dev/ttyS0 -l 3 PIN_POWER```  
+Set keys to send when button 0 is short-pressed: ```mameduino /dev/ttyS0 -s 0 UP LEFT```  
+Pulse power pin when button 3 is long-pressed: ```mameduino /dev/ttyS0 -l 3 PIN_POWER```  
+Remove key bindings when button 1 is long-pressed: ```mameduino /dev/ttyS0 -l 1 CLEAR```  
 Set some keys to send when coin 2 is inserted: ```mameduino /dev/ttyS0 -c 2 b l a r g```  
-Dump current configuration from Arduino: ```mameduino /dev/ttyACM0 -d```  
+Dump current configuration from Arduino to stdout: ```mameduino /dev/ttyACM0 -d```  
 
 FAQ
 ========

@@ -49,7 +49,6 @@ void setup()
     commandMap[SET_COIN] = 'C';
     commandMap[DUMP_CONFIG] = 'D';
     //set names for keys that are read from the command line and their value sent to the arduino
-    keyNameMap["NULL"] = 0; //clear all key bindings for a press mode of a button
     keyNameMap["CLEAR"] = 0; //clear all key bindings for a press mode of a button
     keyNameMap["LCTRL"] = 128;
     keyNameMap["LSHIFT"] = 129;
@@ -91,34 +90,32 @@ void setup()
 
 void printVersion()
 {
-	std::cout << ConsoleStyle(ConsoleStyle::CYAN) << "MAMEduino " << MAMEDUINO_VERSION_STRING << ConsoleStyle() << " - Configure the Arduino Leonardo MAME interface." << std::endl;
+	std::cout << ConsoleStyle(ConsoleStyle::GREEN) << "MAMEduino " << MAMEDUINO_VERSION_STRING << ConsoleStyle() << " - The Arduino Leonardo MAME interface" << std::endl;
 }
 
 void printUsage()
 {
-    std::cout << std::endl;
-    std::cout << "Usage: mameduino <SERIAL_DEVICE> <COMMAND>" << std::endl;
+    std::cout << "Usage:" << ConsoleStyle(ConsoleStyle::CYAN) << " mameduino <SERIAL_DEVICE> <COMMAND>" << ConsoleStyle() << std::endl;
     std::cout << "Valid commands:" << std::endl;
     std::cout << ConsoleStyle(ConsoleStyle::CYAN) << "-r \"on\"|\"off\"" << ConsoleStyle() << " - Set coin rejection to on or off." << std::endl;
     std::cout << ConsoleStyle(ConsoleStyle::CYAN) << "-s BUTTON# KEY ..." << ConsoleStyle() << " - Set keyboard keys to send when button is SHORT-pressed."  << std::endl;
     std::cout << ConsoleStyle(ConsoleStyle::CYAN) << "-l BUTTON# KEY ..." << ConsoleStyle() << " - Set keyboard keys to send when button is LONG-pressed."  << std::endl;
     std::cout << ConsoleStyle(ConsoleStyle::CYAN) << "-c COIN# KEY ..." << ConsoleStyle() << " - Set keyboard keys to send when coin is inserted." << std::endl;
     std::cout << ConsoleStyle(ConsoleStyle::CYAN) << "-d" << ConsoleStyle() << " - Dump version and current configuration of Arduino program." << std::endl;
-    std::cout << "Currently valid buttons: 0-4." << std::endl;
-    std::cout << "Currently valid coins: 0-2." << std::endl;
-    std::cout << "Up to 5 keys are supported. Special keys are referenced by their names: " << std::endl;
+    std::cout << ConsoleStyle(ConsoleStyle::CYAN) << "-h/-?/--help" << ConsoleStyle() << " - Show this help." << std::endl;
+    std::cout << "Currently valid buttons: 0-" << MAX_BUTTON_INDEX << "." << std::endl;
+    std::cout << "Currently valid coins: 0-" << MAX_COIN_INDEX << "." << std::endl;
+    std::cout << "Up to " << MAX_NR_OF_KEYS << " keys are supported. Special keys are referenced by their names: " << std::endl;
     std::cout << "  LCTRL, LSHIFT, LALT, LGUI, RCTRL, RSHIFT, RALT, RGUI," << std::endl;
     std::cout << "  UP, DOWN, LEFT, RIGHT, BACKSPACE, TAB, RETURN, ESC," << std::endl;
     std::cout << "  INSERT, DELETE, PAGEUP, PAGEDOWN, HOME, END, F1-F12" << std::endl;
-    std::cout << "Also the reset and power pin/button can be accessed: " << std::endl;
-    std::cout << "  PIN_RESET, PIN_POWER" << std::endl;
-    std::cout << "It makes no sense to send more than one \"key press\" here..." << std::endl;
-    std::cout << "Your can clear all key commands by the keywords:" << std::endl;
-    std::cout << "  NULL or CLEAR" << std::endl;
+    std::cout << "The reset and power pin/button can be accessed with PIN_RESET and PIN_POWER." << std::endl;
+    std::cout << "Your can clear key bindings for a button/coin with the keyword CLEAR." << std::endl;
     std::cout << "Examples:" << std::endl;
     std::cout << "mameduino /dev/ttyUSB0 -r on (turn coin rejection on)" << std::endl;
     std::cout << "mameduino /dev/ttyS0 -s 0 UP LEFT (set cursor keys for button 0, short press)" << std::endl;
     std::cout << "mameduino /dev/ttyACM0 -l 1 CLEAR (remove all keys for button 1, long press)" << std::endl;
+    std::cout << "mameduino /dev/ttyS0 -l 3 PIN_POWER (pulse power pin for button 1, long press)" << std::endl;
     std::cout << "mameduino /dev/ttyS0 -c 2 b l a r g (send \"blarg\" for coin 2)" << std::endl;
 }
 
@@ -159,10 +156,14 @@ bool readKeys(int argc, const char * argv[], int startIndex)
 
 bool readArguments(int argc, const char * argv[])
 {
-    //first argument must be device
+    //first argument must be device or help command
     std::string argument = argv[1];
     if (argument.at(0) == '/') {
         serialPortName = argument;
+    }
+    else if (argument == "-?" || argument == "-h" || argument == "--help") {
+        printUsage();
+        exit(0);
     }
     else {
         std::cout << ConsoleStyle(ConsoleStyle::RED) << "Error: First argument must be a serial port device string." << ConsoleStyle() << std::endl;
@@ -265,6 +266,7 @@ int main(int argc, const char * argv[])
     printVersion();
     
     if (argc < 2 || !readArguments(argc, argv) || command == BAD_COMMAND) {
+        std::cout << std::endl;
         printUsage();
         return -1;
     }
