@@ -3,6 +3,7 @@ MAMEduino
 
 Use an Arduino Leonardo to connect physical (arcade-style) buttons and/or a coin receptor to a PC. The Arduino then sends a configurable number of keypresses to the PC when buttons are pressed or coins are inserted, and can also startup/shutdown or reset the PC with the appropriate pins connected. The keypresses sent can be configured via small console program which currently works on Linux only (tested on Ubuntu 13.10).  
 A [Fritzing](http://fritzing.org/) layout for the connection can be found in [MAMEduino.fzz](https://github.com/HorstBaerbel/MAMEduino/blob/master/MAMEduino.fzz) and the necessary Arduino source code in [MAMEduino/MAMEduino.ino](https://github.com/HorstBaerbel/MAMEduino/blob/master/MAMEduino/MAMEduino.ino).  
+![Fritzing circuit layout](https://github.com/HorstBaerbel/MAMEduino/blob/master/Fritzing_circuit.png)  
 The coin receptor that was used is the [MoneyControls SR3 Type2](https://www.google.de/search?q=MoneyControls+SR3+Type2+datasheet). Other models will probably need adjustments to the Arduino source code or even the electronic interface/wiring.  
 
 License
