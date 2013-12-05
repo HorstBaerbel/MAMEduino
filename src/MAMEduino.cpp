@@ -20,15 +20,16 @@
 #define MAX_COIN_INDEX 2 //!<coin indices 0-2 are supported
 #define MAX_NR_OF_KEYS 5 //!<1-5 keys can be sent per button press or coin insertion
 
-enum Command {SET_COIN_REJECT, SET_BUTTON_SHORT, SET_BUTTON_LONG, SET_COIN, DUMP_CONFIG, BAD_COMMAND};
+enum Command {SET_COIN_REJECT, SET_BUTTON_SHORT, SET_BUTTON_LONG, SET_COIN, DUMP_CONFIG, CHECK_VERSION, BAD_COMMAND};
 //SET_COIN_REJECT 'R' --> set coin rejection to off (0b) or on (> 0b)
 //SET_BUTTON_SHORT 'S' --> set keys sent on short button press. followed by 1 byte button number and KEYS_NUMBER_OF bytes of key codes. unused codes must be 0!
 //SET_BUTTON_LONG 'L' --> set keys sent on short button press. followed by 1 byte button number and KEYS_NUMBER_OF bytes of key codes. unused codes must be 0!
 //SET_COIN 'C' --> set keys sent on coin insertion. followed by 1 byte coin number and KEYS_NUMBER_OF bytes of key codes. unused codes must be 0!
 //DUMP_CONFIG 'D' --> dump version information and all configured data to serial port after waiting for a short while. for debug purposes.
-#define COMMAND_OK "OK\n" //!<Response sent when a command is detected.
-#define COMMAND_NOK "NK\n" //!<Response sent when the command or its arguments are not ok.
-#define COMMAND_TERMINATOR 10 //!<Command terminator is LF aka '\n'
+//CHECK_VERSION '?' --> send version string to serial port. used by the PC side to find MAMEduino serial port.
+const std::string COMMAND_OK = "OK\n"; //!<Response sent when a command is detected.
+const std::string COMMAND_NOK = "NK\n"; //!<Response sent when the command or its arguments are not ok.
+const char COMMAND_TERMINATOR = 10; //!<Command terminator is LF aka '\n'
 
 std::map<Command, uint8_t> commandMap; //!<Maps arduino commands to their serial terminal values.
 std::map<std::string, uint8_t> keyNameMap; //!<Maps key name strings to their unsigned char value.
@@ -36,7 +37,14 @@ std::map<std::string, uint8_t> keyNameMap; //!<Maps key name strings to their un
 Command command = BAD_COMMAND; //!<The command that was passed on the command line.
 std::vector<uint8_t> commandData; //string containing the whole command
 
-std::string serialPortName = "/dev/ttyUSB0";
+std::string serialPortName = ""; //!<Default serial port device name.
+bool beVerbose = false; //!<Set to true to display more output.
+
+bool autodetectPort = false; //!<Set to true to autodetect the port upon start.
+const std::string possiblePortNames[] {
+    "USB0", "USB1", "USB2", "USB3", "USB4", "USB5", "USB6", "USB7", "USB8", "USB9", 
+    "ACM0", "ACM1", "ACM2", "ACM3", "ACM4", "ACM5", "ACM6", "ACM7", "ACM8", "ACM9", ""
+}; //!<List of possible path name. Simplest method I guess...
 
 //---------------------------------------------------------------------------------------------------------------------------
 
@@ -48,6 +56,7 @@ void setup()
     commandMap[SET_BUTTON_LONG] = 'L';
     commandMap[SET_COIN] = 'C';
     commandMap[DUMP_CONFIG] = 'D';
+    commandMap[CHECK_VERSION] = '?';
     //set names for keys that are read from the command line and their value sent to the arduino
     keyNameMap["CLEAR"] = 0; //clear all key bindings for a press mode of a button
     keyNameMap["LCTRL"] = 128;
@@ -96,6 +105,8 @@ void printVersion()
 void printUsage()
 {
     std::cout << "Usage:" << ConsoleStyle(ConsoleStyle::CYAN) << " mameduino <SERIAL_DEVICE> <COMMAND>" << ConsoleStyle() << std::endl;
+    std::cout << "SERIAL_DEVICE should be e.g. " << ConsoleStyle(ConsoleStyle::CYAN) << "/dev/ttyACM0" << ConsoleStyle() << 
+                 ", or use " << ConsoleStyle(ConsoleStyle::CYAN) << "-a" << ConsoleStyle() << " to auto-detect it." << std::endl;    
     std::cout << "Valid commands:" << std::endl;
     std::cout << ConsoleStyle(ConsoleStyle::CYAN) << "-r \"on\"|\"off\"" << ConsoleStyle() << " - Set coin rejection to on or off." << std::endl;
     std::cout << ConsoleStyle(ConsoleStyle::CYAN) << "-s BUTTON# KEY ..." << ConsoleStyle() << " - Set keyboard keys to send when button is SHORT-pressed."  << std::endl;
@@ -112,11 +123,11 @@ void printUsage()
     std::cout << "The reset and power pin/button can be accessed with PIN_RESET and PIN_POWER." << std::endl;
     std::cout << "Your can clear key bindings for a button/coin with the keyword CLEAR." << std::endl;
     std::cout << "Examples:" << std::endl;
-    std::cout << "mameduino /dev/ttyUSB0 -r on (turn coin rejection on)" << std::endl;
-    std::cout << "mameduino /dev/ttyS0 -s 0 UP LEFT (set cursor keys for button 0, short press)" << std::endl;
-    std::cout << "mameduino /dev/ttyACM0 -l 1 CLEAR (remove all keys for button 1, long press)" << std::endl;
-    std::cout << "mameduino /dev/ttyS0 -l 3 PIN_POWER (pulse power pin for button 1, long press)" << std::endl;
-    std::cout << "mameduino /dev/ttyS0 -c 2 b l a r g (send \"blarg\" for coin 2)" << std::endl;
+    std::cout << ConsoleStyle(ConsoleStyle::CYAN) << "mameduino -a -r on" << ConsoleStyle() << " (auto-detect serial port, turn coin rejection on)" << std::endl;
+    std::cout << ConsoleStyle(ConsoleStyle::CYAN) << "mameduino /dev/ttyS0 -s 0 UP LEFT" << ConsoleStyle() << " (set cursor keys for button 0, short press)" << std::endl;
+    std::cout << ConsoleStyle(ConsoleStyle::CYAN) << "mameduino /dev/ttyACM0 -l 1 CLEAR" << ConsoleStyle() << " (remove all keys for button 1, long press)" << std::endl;
+    std::cout << ConsoleStyle(ConsoleStyle::CYAN) << "mameduino /dev/ttyS0 -l 3 PIN_POWER" << ConsoleStyle() << " (pulse power pin for button 1, long press)" << std::endl;
+    std::cout << ConsoleStyle(ConsoleStyle::CYAN) << "mameduino /dev/ttyUSB0 -c 2 b l a r g" << ConsoleStyle() << " (send \"blarg\" for coin 2)" << std::endl;
 }
 
 bool readKeys(int argc, const char * argv[], int startIndex)
@@ -156,12 +167,18 @@ bool readKeys(int argc, const char * argv[], int startIndex)
 
 bool readArguments(int argc, const char * argv[])
 {
-    //first argument must be device or help command
+    //first argument must be device, autodetect or help command
     std::string argument = argv[1];
-    if (argument.at(0) == '/') {
+    if (argument.length() > 5 && argument.substr(0, 5) == "/dev/") {
+        //serial port passed on command line
         serialPortName = argument;
     }
+    else if (argument == "-a") {
+        //autodetect command passed
+        autodetectPort = true;
+    }
     else if (argument == "-?" || argument == "-h" || argument == "--help") {
+        //help command passed
         printUsage();
         exit(0);
     }
@@ -248,40 +265,33 @@ bool readArguments(int argc, const char * argv[])
     return false;
 }
 
-bool writeToPort(const int serialPort, const unsigned char * data, const ssize_t size)
+bool serialPortExists(const std::string & portName)
 {
-	//write bytes to the port
-	ssize_t n = write(serialPort, data, size);
-	if (n != size) {
-		std::cout << ConsoleStyle(ConsoleStyle::RED) << "Error: Failed write to serial port!" << ConsoleStyle() << std::endl;
-		return false;
-	}
-	return true;
+    int portHandle = open(portName.c_str(), O_RDWR | O_NOCTTY | O_NDELAY);
+    if (portHandle <= 0) {
+        return false;
+    }
+    close(portHandle);
+    return true;
 }
 
-int main(int argc, const char * argv[])
+bool openSerialPort(int & portHandle, const std::string & portName, termios * oldOptions)
 {
-	setup();
-
-    printVersion();
-    
-    if (argc < 2 || !readArguments(argc, argv) || command == BAD_COMMAND) {
-        std::cout << std::endl;
-        printUsage();
-        return -1;
+    //try opening serial port
+    if (beVerbose) {
+        std::cout << "Opening serial port " << portName << " ..." << std::endl;
     }
-
-    std::cout << "Opening serial port " << serialPortName << " ..." << std::endl;
-    int serialPort = open(serialPortName.c_str(), O_RDWR | O_NOCTTY | O_NDELAY);
-    if (serialPort <= 0) {
-		std::cout << ConsoleStyle(ConsoleStyle::RED) << "Error: Failed to open serial port " << serialPortName << "!" << ConsoleStyle() << std::endl;
-		return -2;
+    portHandle = open(portName.c_str(), O_RDWR | O_NOCTTY | O_NDELAY);
+    if (portHandle <= 0) {
+		std::cout << ConsoleStyle(ConsoleStyle::RED) << "Error: Failed to open serial port " << portName << "!" << ConsoleStyle() << std::endl;
+		return false;
 	}
-
-	std::cout << "Setting serial port to 38400bps, 8N1 mode..." << std::endl;
+	//no set serial port to proper settings
+	if (beVerbose) {
+    	std::cout << "Setting serial port to 38400bps, 8N1 mode..." << std::endl;
+    }
 	//store current terminal options
-	termios oldOptions;
-	tcgetattr(serialPort, &oldOptions);
+	tcgetattr(portHandle, oldOptions);
 	//clear new terminal options
 	termios options;
 	memset(&options, 0, sizeof(termios));
@@ -303,96 +313,147 @@ int main(int argc, const char * argv[])
     //flush serial port
     //tcflush(serialPort, TCIFLUSH);
 	//set terminal options
-	if (tcsetattr(serialPort, TCSANOW, &options) != 0) {
+	if (tcsetattr(portHandle, TCSANOW, &options) != 0) {
 		std::cout << ConsoleStyle(ConsoleStyle::RED) << "Error: Failed set serial port options!" << ConsoleStyle() << std::endl;
-		close(serialPort);
-		return -3;
+		close(portHandle);
+		return false;
 	}
+	return true;
+}
 
+void closeSerialPort(const int portHandle, const termios * oldOptions)
+{
+	//restore old port settings
+	tcsetattr(portHandle, TCSAFLUSH, oldOptions);
+	//close port and terminate
+	close(portHandle);
+}
+
+bool writeToSerialPort(const int portHandle, const unsigned char * data, const ssize_t size)
+{
+	//write bytes to the port
+	ssize_t n = write(portHandle, data, size);
+	if (n != size) {
+		std::cout << ConsoleStyle(ConsoleStyle::RED) << "Error: Failed write to serial port!" << ConsoleStyle() << std::endl;
+		return false;
+	}
+	return true;
+}
+
+bool getResponseFromSerial(const int portHandle, std::string & response, int waitTimeMs = 200)
+{
+    //clear response string
+    response.clear();
+    //start reading from serial port
+    char buffer[256];
+    bool responseReceived = false;
+    int waitStep = 50;
+    std::string combinedResponse;
+    while (!responseReceived && waitTimeMs > 0) {
+        //sleep some time to transfer commands
+        usleep(waitStep*1000);
+        ssize_t bytesRead = read(portHandle, &buffer, sizeof(buffer) - 1);
+        if (bytesRead > 0) {
+            //response received, null-terminate string and add to combined response
+    	    buffer[bytesRead] = '\0';
+    	    combinedResponse += buffer;
+    	    //check if the message is long enough
+        	if (combinedResponse.length() >= COMMAND_OK.length()) {
+                //check if the end of our message is OK\n or NK\n
+         	    if (combinedResponse.substr(combinedResponse.length() - COMMAND_OK.length(), COMMAND_OK.length()) == COMMAND_OK) {
+         	        //remove end from response and return
+         	        response = combinedResponse.substr(0, combinedResponse.length() - COMMAND_OK.length());
+         	        return true;
+                }
+                else if (combinedResponse.substr(combinedResponse.length() - COMMAND_NOK.length(), COMMAND_NOK.length()) == COMMAND_NOK) {
+                    return false;
+                }
+            }
+        }
+        waitTimeMs -= waitStep;
+    }
+    return false;
+}
+
+int main(int argc, const char * argv[])
+{
+	setup();
+
+    printVersion();
+    
+    if (argc < 2 || !readArguments(argc, argv) || command == BAD_COMMAND) {
+        std::cout << std::endl;
+        printUsage();
+        return -1;
+    }
+
+    termios oldOptions;
+    int portHandle = -1;
+    if (autodetectPort) {
+        //try to autodetect port. get post names from list
+        std::string portNameCandidate;
+        for (int i = 0; !possiblePortNames[i].empty() && serialPortName.empty(); ++i) {
+            //try to open port
+            portNameCandidate = "/dev/tty" + possiblePortNames[i];
+            if (serialPortExists(portNameCandidate) && openSerialPort(portHandle, portNameCandidate, &oldOptions)) {
+                //opening worked. send version command
+                std::vector<uint8_t> versionCommand;
+                versionCommand.push_back('?');
+                versionCommand.push_back(COMMAND_TERMINATOR);
+                if (writeToSerialPort(portHandle, versionCommand.data(), versionCommand.size() * sizeof(uint8_t))) {
+                    //sending worked. receive response.                           
+                    std::string response;
+                    if (getResponseFromSerial(portHandle, response) && response.substr(0, 10) == "MAMEduino ") {
+                        if (beVerbose) {
+                            std::cout << ConsoleStyle(ConsoleStyle::GREEN) << response << " found at " << portNameCandidate << "." << ConsoleStyle() << std::endl;
+                        }
+		                serialPortName = portNameCandidate;
+                    }
+                }
+                closeSerialPort(portHandle, &oldOptions);
+            }
+        }
+        if (serialPortName.empty()) {
+            std::cout << ConsoleStyle(ConsoleStyle::RED) << "Error: Failed to auto-detect serial port!" << ConsoleStyle() << std::endl;
+            return -2;
+        }
+    }
+
+    //open port with port name given on command line or filled by auto-detection
+    if (!openSerialPort(portHandle, serialPortName, &oldOptions)) {
+        return -2;
+    }
+    
+    if (beVerbose) {
+    	std::cout << "Sending command to Arduino..." << std::endl;
+    }
     //terminate command with a line break
     commandData.push_back(COMMAND_TERMINATOR);
     //write command to port
-	std::cout << "Sending command to Arduino..." << std::endl;
-	if (!writeToPort(serialPort, commandData.data(), commandData.size() * sizeof(uint8_t))) {
-		tcsetattr(serialPort, TCSAFLUSH, &oldOptions);
-		close(serialPort);
-		return -4;
+	if (!writeToSerialPort(portHandle, commandData.data(), commandData.size() * sizeof(uint8_t))) {
+		closeSerialPort(portHandle, &oldOptions);
+		return -3;
 	}
 	
-	std::cout << "Waiting for response from Arduino..." << std::endl;
-	
-	if (command == DUMP_CONFIG) {
-	    //read response from arduino
-	    char buffer[256];
-	    bool responseReceived = false;
-	    while (!responseReceived) {
-	        //sleep some time to transfer commands
-    	    usleep(100*1000);
-	        ssize_t bytesRead = read(serialPort, &buffer, sizeof(buffer) - 1);
-	        if (bytesRead > 0) {
-    	        //response received, null-terminate string
-	    	    buffer[bytesRead] = '\0';
-	    	    std::string response(buffer);
-	    	    //std::cout << response;
-	    	    //split string by '\n's
-	    	    size_t pos = 0;
-                while ((pos = response.find('\n')) != std::string::npos) {
-                    std::string token = response.substr(0, pos + 1);
-                    if (token == COMMAND_OK || token == COMMAND_NOK) {
-                        //end command. stop waiting for data and clear rest of response
-                        responseReceived = true;
-                        response.clear();
-                        break;
-                    }
-                    else {
-                        //output data read from serial
-                        std::cout << token;
-                        response.erase(0, pos + 1);
-                    }
-                }
-                //print remaining response data
-                std::cout << response;
-	        }
-	    }
-	}
-	else {
-	    //sleep some time to transfer commands
-	    usleep(100*1000);
-	    //set block options
-	    options.c_cc[VTIME] = 1; //for for 0.05s per character
-        options.c_cc[VMIN] = 3; //blocking read until 3 chars received
-        tcsetattr(serialPort, TCSANOW, &options);
-	    //read response from arduino
-	    char buffer[256];
-	    ssize_t bytesRead = read(serialPort, &buffer, sizeof(buffer) - 1);
-	    //std::cout << bytesRead << " bytes received." << std::endl;
-	    if (bytesRead < 3) {
-		    //reading failed or response too short
-		    std::cout << ConsoleStyle(ConsoleStyle::RED) << "Error: Bad response from Arduino!" << ConsoleStyle() << std::endl;
-		    tcsetattr(serialPort, TCSAFLUSH, &oldOptions);
-		    close(serialPort);
-		    return -5;
-	    }
-	    else {
-		    //response received, null-terminate string
-		    buffer[bytesRead] = '\0';
-		    std::string response(buffer);
-		    //std::cout << "Arduino responded: \"" << response << "\"." << std::endl;
-		    if (response == COMMAND_OK) {
-			    std::cout << ConsoleStyle(ConsoleStyle::GREEN) << "Succeded." << ConsoleStyle() << std::endl;
-		    }
-		    else {
-			    std::cout << ConsoleStyle(ConsoleStyle::RED) << "Error: Sending the command failed!" << ConsoleStyle() << std::endl;
-			    tcsetattr(serialPort, TCSAFLUSH, &oldOptions);
-			    close(serialPort);
-			    return -5;
-		    }
-	    }
-	}
+	if (beVerbose) {
+    	std::cout << "Waiting for response from Arduino..." << std::endl;
+    }
+    //read response from arduino
+    std::string response;
+    if (getResponseFromSerial(portHandle, response)) {
+        if (command == DUMP_CONFIG) {
+            std::cout << response;
+        }
+        std::cout << ConsoleStyle(ConsoleStyle::GREEN) << "Command succeded." << ConsoleStyle() << std::endl;
+    }
+    else {
+        std::cout << ConsoleStyle(ConsoleStyle::RED) << "Error: Sending the command failed!" << ConsoleStyle() << std::endl;
+        closeSerialPort(portHandle, &oldOptions);
+        return -4;
+    }
 
-	//restore old port settings
-	tcsetattr(serialPort, TCSAFLUSH, &oldOptions);
-	//close port and terminate
-	close(serialPort);
+    //close port	
+	closeSerialPort(portHandle, &oldOptions);
+
 	return 0;
 }

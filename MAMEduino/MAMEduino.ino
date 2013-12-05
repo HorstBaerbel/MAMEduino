@@ -4,7 +4,7 @@
 //In case of bugs/question, please file an issue at the github page or
 //drop me an email at: bim.overbohm@googlemail.com
 
-#define PROGRAM_VERSION_STRING "MAMEduino 0.9.9.1"
+#define PROGRAM_VERSION_STRING "MAMEduino 0.9.9.2"
 
 //----- power/reset ------------------------------------------------------------------------
 
@@ -26,8 +26,10 @@
 //max number of keys that can be defined
 #define KEYS_NUMBER_OF 5
 
+//How long to press a simulated key
+#define KEYS_PRESS_DELAY 100
 //How long to wait between simulated key presses
-#define KEYS_PRESS_NEXT_DELAY 100
+#define KEYS_PRESS_NEXT_DELAY 200
 
 void keyboardSendString(const byte keys[5])
 {
@@ -44,27 +46,29 @@ void keyboardSendString(const byte keys[5])
   else {
     //off. send as keystrokes
     while ((i < KEYS_NUMBER_OF) && (keys[i] != 0)) {
-      if (keys[i] < 128) {
+      //send ALL keys using press/release, because otherwise wrong key codes are sent
+      /*if (keys[i] < 128) {
         Keyboard.write(keys[i]);
         delay(KEYS_PRESS_NEXT_DELAY);
       }
-      else if (keys[i] < CHAR_HARDWARE_FUNCTION) {
+      else*/ if (keys[i] < CHAR_HARDWARE_FUNCTION) {
         Keyboard.press(keys[i]);
-        delay(KEYS_PRESS_NEXT_DELAY);
+        delay(KEYS_PRESS_DELAY);
         Keyboard.releaseAll();
+        delay(KEYS_PRESS_NEXT_DELAY);
       }
       else {
         //hardware function. yeah, I could have used a map.
         if (keys[i] == CHAR_PIN_RESET) {
           //activate reset pin
           digitalWrite(PIN_RESET, HIGH);
-          delay(KEYS_PRESS_NEXT_DELAY);
+          delay(KEYS_PRESS_DELAY);
           digitalWrite(PIN_RESET, LOW);
         }
         else if (keys[i] == CHAR_PIN_POWER) {
           //activate power pin
           digitalWrite(PIN_POWER, HIGH);
-          delay(KEYS_PRESS_NEXT_DELAY);
+          delay(KEYS_PRESS_DELAY);
           digitalWrite(PIN_POWER, LOW);
         }
       }
@@ -261,6 +265,7 @@ void coinsDoCommands()
 #define COMMAND_SET_BUTTON_LONG 'L' //set keys sent on short button press. followed by 1 byte button number and KEYS_NUMBER_OF bytes of key codes. unused codes must be 0!
 #define COMMAND_SET_COIN 'C' //set keys sent on coin insertion. followed by 1 byte coin number and KEYS_NUMBER_OF bytes of key codes. unused codes must be 0!
 #define COMMAND_DUMP_CONFIG 'D' //dump version information and all configured data to serial port after waiting for a short while. for debug purposes.
+#define COMMAND_CHECK_VERSION '?' //send version string to serial port. used by the PC side to find MAMEduino serial port.
 #define COMMAND_OK "OK\n" //Response sent when a command is detected.
 #define COMMAND_NOK "NK\n" //Response sent when the command or its arguments are not ok.
 #define COMMAND_TERMINATOR 10 //Terminate lines with LF aka '\n'
@@ -353,6 +358,19 @@ void serialReadCommand()
         serialBytesNeeded = 1;
         //dump configuration
         serialDumpConfig();
+        //send positive response
+        Serial.print(COMMAND_OK);
+        break;
+      case COMMAND_CHECK_VERSION:
+        //flush commands
+        while (Serial.available() > 0) {
+          Serial.read();
+        }
+        //wait for next command
+        serialCommand = COMMAND_UNKNOWN;
+        serialBytesNeeded = 1;
+        //dump version string
+        Serial.print(PROGRAM_VERSION_STRING);
         //send positive response
         Serial.print(COMMAND_OK);
         break;

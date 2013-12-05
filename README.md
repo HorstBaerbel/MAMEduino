@@ -28,8 +28,8 @@ Usage
 
 ```
 mameduino <SERIAL_DEVICE> <COMMAND>
-```
-
+```  
+The SERIAL_DEVICE should be something like /dev/ttyACM0, or you can use the option -a to auto-detect it.  
 **Valid commands:**
 - -r "on"|"off" Set coin rejection to on or off.
 - -s BUTTON# KEY ... Set keyboard keys to send when button is SHORT-pressed (~0.1s).
@@ -48,9 +48,9 @@ mameduino <SERIAL_DEVICE> <COMMAND>
   CLEAR  
 
 **Examples:**  
-Turn coin rejection on: ```mameduino /dev/ttyUSB0 -r on```  
+Turn coin rejection on, auto-detect serial port: ```mameduino -a -r on```  
 Set keys to send when button 0 is short-pressed: ```mameduino /dev/ttyS0 -s 0 UP LEFT```  
-Pulse power pin when button 3 is long-pressed: ```mameduino /dev/ttyS0 -l 3 PIN_POWER```  
+Pulse power pin when button 3 is long-pressed: ```mameduino /dev/ttyUSB0 -l 3 PIN_POWER```  
 Remove key bindings when button 1 is long-pressed: ```mameduino /dev/ttyS0 -l 1 CLEAR```  
 Set some keys to send when coin 2 is inserted: ```mameduino /dev/ttyS0 -c 2 b l a r g```  
 Dump current configuration from Arduino to stdout: ```mameduino /dev/ttyACM0 -d```  
