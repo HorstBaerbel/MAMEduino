@@ -30,6 +30,7 @@ Usage
 mameduino <SERIAL_DEVICE> <COMMAND>
 ```  
 The SERIAL_DEVICE should be something like /dev/ttyACM0, or you can use the option -a to auto-detect it.  
+
 **Valid commands:**
 - -r "on"|"off" Set coin rejection to on or off.
 - -s BUTTON# KEY ... Set keyboard keys to send when button is SHORT-pressed (~0.1s).
@@ -55,8 +56,13 @@ Remove key bindings when button 1 is long-pressed: ```mameduino /dev/ttyS0 -l 1 
 Set some keys to send when coin 2 is inserted: ```mameduino /dev/ttyS0 -c 2 b l a r g```  
 Dump current configuration from Arduino to stdout: ```mameduino /dev/ttyACM0 -d```  
 
+An example batch file for starting up an emulator can be found [here](setup_keys_and_run_emulator.sh). Run it with the ROM name as a parameter.
+
 FAQ
 ========
+**Q:** How is this better than an old butchered USB-Keyboard?!  
+**A:** Configurable, coin receptor, PC control, and then some...  
+
 **Q:** I have problems because the Arduino keeps on sending commands to the keyboard and I can't stop it.  
 **A:** Pull pin 0 LOW (connect to GND). This will re-route all keyboard commands to the serial port.  
 
