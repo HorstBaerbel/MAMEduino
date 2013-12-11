@@ -92,8 +92,8 @@ const byte PIN_BUTTON[BUTTONS_NUMBER_OF] = {11, 2, 3, 4, 5};
 
 //characters sent when a button is pressed. the numbers >= 250 are currently reserved for hardware functions
 //atm 254=RESET and 255=POWER pin are supported
-byte buttonShortPressedString[BUTTONS_NUMBER_OF][KEYS_NUMBER_OF] = {{0, 0, 0, 0, 0}, {0, 0, 0, 0, 0}, {0, 0, 0, 0, 0}, {0, 0, 0, 0, 0}, {CHAR_PIN_POWER, 0, 0, 0, 0}};
-byte buttonLongPressedString[BUTTONS_NUMBER_OF][KEYS_NUMBER_OF] = {{0, 0, 0, 0, 0}, {0, 0, 0, 0, 0}, {0, 0, 0, 0, 0}, {CHAR_PIN_RESET, 0, 0, 0, 0}, {CHAR_PIN_POWER, 0, 0, 0, 0}};
+byte buttonShortPressedString[BUTTONS_NUMBER_OF][KEYS_NUMBER_OF] = {{0, 0, 0, 0, 0}, {0, 0, 0, 0, 0}, {0, 0, 0, 0, 0}, {0, 0, 0, 0, 0}, {0, 0, 0, 0, 0}};
+byte buttonLongPressedString[BUTTONS_NUMBER_OF][KEYS_NUMBER_OF] = {{0, 0, 0, 0, 0}, {0, 0, 0, 0, 0}, {0, 0, 0, 0, 0}, {0, 0, 0, 0, 0}, {CHAR_PIN_POWER, 0, 0, 0, 0}};
 
 //button press durations in ms
 #define RELEASE_DURATION 50

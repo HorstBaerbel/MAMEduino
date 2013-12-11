@@ -4,11 +4,16 @@
 devicename=-a
 
 #button layout: 0=coin reject, 1=1 player, 2=2 players, 3=red, 4=black
+./mameduino $devicename -s 0 CLEAR
 ./mameduino $devicename -s 1 1
 ./mameduino $devicename -s 2 2
-./mameduino $devicename -s 3 p
-./mameduino $devicename -l 3 ESC
-./mameduino $devicename -l 4 PIN_RESET
+./mameduino $devicename -s 3 ESC
+./mameduino $devicename -s 4 p
+./mameduino $devicename -l 0 CLEAR
+./mameduino $devicename -l 1 CLEAR
+./mameduino $devicename -l 2 CLEAR
+./mameduino $devicename -l 3 CLEAR
+./mameduino $devicename -l 4 PIN_POWER
 #coin layout: 0=50ct, 1=1euro, 2=2euro
 ./mameduino $devicename -c 0 5
 ./mameduino $devicename -c 1 5 5
@@ -23,14 +28,16 @@ retroarch -L /bla/libretro/mame078_libretro.so --config /bla/configs/all/retroar
 #turn coin rejection on again
 ./mameduino $devicename -r on
 #button layout: 0=coin reject, 1=1 player, 2=2 players, 3=red, 4=black
+./mameduino $devicename -s 0 CLEAR
 ./mameduino $devicename -s 1 CLEAR
 ./mameduino $devicename -s 2 CLEAR
 ./mameduino $devicename -s 3 CLEAR
 ./mameduino $devicename -s 4 CLEAR
+./mameduino $devicename -l 0 CLEAR
 ./mameduino $devicename -l 1 CLEAR
 ./mameduino $devicename -l 2 CLEAR
 ./mameduino $devicename -l 3 CLEAR
-./mameduino $devicename -l 4 PIN_RESET
+./mameduino $devicename -l 4 PIN_POWER
 #coin layout: 0=50ct, 1=1euro, 2=2euro
 ./mameduino $devicename -c 0 CLEAR
 ./mameduino $devicename -c 1 CLEAR

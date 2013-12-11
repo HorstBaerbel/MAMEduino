@@ -61,13 +61,16 @@ An example batch file for starting up an emulator can be found [here](setup_keys
 FAQ
 ========
 **Q:** How is this better than an old butchered USB-Keyboard?!  
-**A:** Configurable, coin receptor, PC control, and then some...  
+**A:** Configurable, expandable, coin receptor, PC control, and then some...  
 
 **Q:** I have problems because the Arduino keeps on sending commands to the keyboard and I can't stop it.  
 **A:** Pull pin 0 LOW (connect to GND). This will re-route all keyboard commands to the serial port.  
 
 **Q:** When I send commands via mameduino to the Arduino communication is not working properly.  
 **A:** Make sure Arduino and PC are using the same MAMEduino version. Reset the Arduino and wait a few seconds for it to boot properly.  
+
+**Q:** I can not access the serial port somehow...  
+**A:** You might need to add your USERNAME to the dialout group: "sudo usermod -a -G dialout USERNAME".  
 
 I found a bug or have a suggestion
 ========
