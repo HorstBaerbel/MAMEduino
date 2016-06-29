@@ -6,6 +6,45 @@
 
 #define PROGRAM_VERSION_STRING "MAMEduino 0.9.9.2"
 
+//----- LEDs (you simply can leave this out if you don't want LEDs) ------------------------------------------------------------
+#include <FastLED.h>
+
+//pin for WS2812 LED strip connection
+#define PIN_LED_STRIP 1
+//array holding LED color data
+#define NUM_LEDS 8
+CRGB leds[NUM_LEDS];
+
+//define indices of LED types
+#define LED_INTERIOR_START 0
+#define LED_INTERIOR_END (LED_INTERIOR_START + 5)
+#define LED_COIN_RECEPTOR_START (LED_INTERIOR_END + 1)
+#define LED_COIN_RECEPTOR_END (LED_COIN_RECEPTOR_START + 1)
+//current interior LED color
+CRGB interiourColor = CRGB(0, 0, 0);
+
+void ledShowRejectCoin(bool reject)
+{
+    const CRGB newColor = reject ? CRGB(255, 0, 0) : CRGB(0, 255, 0);
+    for (uint8_t i = LED_COIN_RECEPTOR_START; i <= LED_COIN_RECEPTOR_END; ++i) {
+        leds[i] = newColor;
+    }
+    FastLED.show();
+}
+
+void ledCycleInteriorColor()
+{
+    const uint8_t hue = (uint8_t)(millis() >> 7);
+    const CRGB newColor = CHSV(hue, 255, 255);
+    if (interiourColor != newColor) {
+        for (uint8_t i = LED_INTERIOR_START; i <= LED_INTERIOR_END; ++i) {
+            leds[i] = newColor;
+        }
+        interiourColor = newColor;
+        FastLED.show();
+    }
+}
+
 //----- power/reset ------------------------------------------------------------------------
 
 //pin for mainboard power switch
@@ -19,6 +58,7 @@
 #define CHAR_HARDWARE_FUNCTION CHAR_PIN_RESET
 
 //----- keyboard ------------------------------------------------------------------------------------
+#include <Keyboard.h>
 
 //pin for redirecting keyboard codes to serial port instead of keyboard
 #define PIN_KEY_TO_SERIAL 0
@@ -396,13 +436,15 @@ void serialReadCommand()
           if (Serial.read() > 0) {
             //Keyboard.print(" ON");
             digitalWrite(PIN_REJECT_COINS, HIGH);
+            ledShowRejectCoin(true);
           }
           else {
             //Keyboard.print(" OFF");
             digitalWrite(PIN_REJECT_COINS, LOW);
+            ledShowRejectCoin(false);
           }
-	  //valid command. send positive response
-	  Serial.write(COMMAND_OK);
+	      //valid command. send positive response
+	      Serial.write(COMMAND_OK);
           break;
         case COMMAND_SET_BUTTON_SHORT:
         case COMMAND_SET_BUTTON_LONG: {
@@ -479,6 +521,14 @@ void setup()
     pinMode(PIN_BUTTON[i], INPUT_PULLUP);
   }
 
+  //setup LED strip
+  FastLED.addLeds<WS2812, PIN_LED_STRIP, GRB>(leds, NUM_LEDS);
+  FastLED.setCorrection(TypicalLEDStrip);
+  FastLED.setDither(DISABLE_DITHER);
+  //show coin receptor status with LEDs
+  ledShowRejectCoin(true);
+  FastLED.show();
+
   //open the serial port
   Serial.begin(38400);
 
@@ -496,5 +546,7 @@ void loop()
   //read coin states and issue commands
   coinsReadState();
   coinsDoCommands();
+  //do color-cycling of interior color
+  ledCycleInteriorColor();
 }
 
