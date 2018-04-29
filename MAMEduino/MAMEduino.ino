@@ -4,7 +4,7 @@
 //In case of bugs/question, please file an issue at the github page or
 //drop me an email at: bim.overbohm@googlemail.com
 
-#define PROGRAM_VERSION_STRING "MAMEduino 0.9.9.2"
+#define PROGRAM_VERSION_STRING "MAMEduino 0.9.9.3"
 
 //----- LEDs (you simply can leave this out if you don't want LEDs) ------------------------------------------------------------
 #include <FastLED.h>
@@ -64,14 +64,14 @@ void ledCycleInteriorColor()
 #define PIN_KEY_TO_SERIAL 0
 
 //max number of keys that can be defined
-#define KEYS_NUMBER_OF 5
+#define KEYS_NUMBER_OF 6
 
 //How long to press a simulated key
 #define KEYS_PRESS_DELAY 100
 //How long to wait between simulated key presses
 #define KEYS_PRESS_NEXT_DELAY 200
 
-void keyboardSendString(const byte keys[5])
+void keyboardSendString(const byte keys[KEYS_NUMBER_OF])
 {
   int i = 0;
   //SAFETY BELT: check for keyboard to COM redirection
@@ -132,8 +132,8 @@ const byte PIN_BUTTON[BUTTONS_NUMBER_OF] = {11, 2, 3, 4, 5};
 
 //characters sent when a button is pressed. the numbers >= 250 are currently reserved for hardware functions
 //atm 254=RESET and 255=POWER pin are supported
-byte buttonShortPressedString[BUTTONS_NUMBER_OF][KEYS_NUMBER_OF] = {{0, 0, 0, 0, 0}, {0, 0, 0, 0, 0}, {0, 0, 0, 0, 0}, {0, 0, 0, 0, 0}, {CHAR_PIN_POWER, 0, 0, 0, 0}};
-byte buttonLongPressedString[BUTTONS_NUMBER_OF][KEYS_NUMBER_OF] = {{0, 0, 0, 0, 0}, {0, 0, 0, 0, 0}, {0, 0, 0, 0, 0}, {0, 0, 0, 0, 0}, {0, 0, 0, 0, 0}};
+byte buttonShortPressedString[BUTTONS_NUMBER_OF][KEYS_NUMBER_OF] = {{0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0}, {CHAR_PIN_POWER, 0, 0, 0, 0, 0}};
+byte buttonLongPressedString[BUTTONS_NUMBER_OF][KEYS_NUMBER_OF] = {{0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0}};
 
 //button press durations in ms
 #define RELEASE_DURATION 50
@@ -237,7 +237,7 @@ const byte PIN_COIN[COINS_NUMBER_OF] = {8, 9, 10};
 #define PIN_REJECT_COINS 12
 
 //characters sent when a coin is inserted. Coin 1, 2, 3
-byte coinInsertedString[COINS_NUMBER_OF][KEYS_NUMBER_OF] = {{0, 0, 0, 0, 0}, {0, 0, 0, 0, 0}, {0, 0, 0, 0, 0}};
+byte coinInsertedString[COINS_NUMBER_OF][KEYS_NUMBER_OF] = {{0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0}};
 
 //minumum coin signal duration
 #define COIN_INSERT_DURATION 70
@@ -340,11 +340,11 @@ void serialDumpConfig()
     Serial.print("Button #");
     Serial.print(ib);
     Serial.print(" short: ");
-    for (int ik = 0; ik < BUTTONS_NUMBER_OF; ik++) {
+    for (int ik = 0; ik < KEYS_NUMBER_OF; ik++) {
       Serial.print(buttonShortPressedString[ib][ik]); Serial.print(' ');
     }
     Serial.print("long: ");
-    for (int ik = 0; ik < BUTTONS_NUMBER_OF; ik++) {
+    for (int ik = 0; ik < KEYS_NUMBER_OF; ik++) {
       Serial.print(buttonLongPressedString[ib][ik]); Serial.print(' ');
     }
     Serial.println();
@@ -353,7 +353,7 @@ void serialDumpConfig()
     Serial.print("Coin #");
     Serial.print(ic);
     Serial.print(": ");
-    for (int ik = 0; ik < BUTTONS_NUMBER_OF; ik++) {
+    for (int ik = 0; ik < KEYS_NUMBER_OF; ik++) {
       Serial.print(coinInsertedString[ic][ik]); Serial.print(' ');
     }
     Serial.println();
@@ -384,7 +384,7 @@ void serialReadCommand()
       case COMMAND_SET_BUTTON_SHORT:
       case COMMAND_SET_BUTTON_LONG:
       case COMMAND_SET_COIN:
-        //we expect another byte with the button number here and then 1-5 key codes
+        //we expect another byte with the button number here and then 1-6 key codes
         //Keyboard.print("Button/coin command");
         serialBytesNeeded = 3;
         break;

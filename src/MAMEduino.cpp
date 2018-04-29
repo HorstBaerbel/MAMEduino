@@ -18,7 +18,7 @@
 
 #define MAX_BUTTON_INDEX 4 //!<button index 0-4 are supported
 #define MAX_COIN_INDEX 2 //!<coin indices 0-2 are supported
-#define MAX_NR_OF_KEYS 5 //!<1-5 keys can be sent per button press or coin insertion
+#define MAX_NR_OF_KEYS 6 //!<1-6 keys can be sent per button press or coin insertion
 
 enum Command {SET_COIN_REJECT, SET_BUTTON_SHORT, SET_BUTTON_LONG, SET_COIN, DUMP_CONFIG, CHECK_VERSION, BAD_COMMAND};
 //SET_COIN_REJECT 'R' --> set coin rejection to off (0b) or on (> 0b)
@@ -127,14 +127,14 @@ void printUsage()
     std::cout << ConsoleStyle(ConsoleStyle::CYAN) << "mameduino /dev/ttyS0 -s 0 UP LEFT" << ConsoleStyle() << " (set cursor keys for button 0, short press)" << std::endl;
     std::cout << ConsoleStyle(ConsoleStyle::CYAN) << "mameduino /dev/ttyACM0 -l 1 CLEAR" << ConsoleStyle() << " (remove all keys for button 1, long press)" << std::endl;
     std::cout << ConsoleStyle(ConsoleStyle::CYAN) << "mameduino /dev/ttyS0 -l 3 PIN_POWER" << ConsoleStyle() << " (pulse power pin for button 1, long press)" << std::endl;
-    std::cout << ConsoleStyle(ConsoleStyle::CYAN) << "mameduino /dev/ttyUSB0 -c 2 b l a r g" << ConsoleStyle() << " (send \"blarg\" for coin 2)" << std::endl;
+    std::cout << ConsoleStyle(ConsoleStyle::CYAN) << "mameduino /dev/ttyUSB0 -c 2 b l a h r g" << ConsoleStyle() << " (send \"blahrg\" for coin 2)" << std::endl;
 }
 
 bool readKeys(int argc, const char * argv[], int startIndex)
 {
     if (startIndex < argc) {
         int argumentIndex = 0;
-        for(int i = startIndex; i < argc && (i - startIndex) < 5;) {
+        for(int i = startIndex; i < argc && (i - startIndex) < MAX_NR_OF_KEYS;) {
             //check if key is a single character or a modifier etc.
             std::string key = argv[i++];
             if (key.size() > 1) {
