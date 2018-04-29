@@ -1,7 +1,7 @@
 MAMEduino
 ========
 
-Use an Arduino Leonardo to connect physical (arcade-style) buttons and/or a coin receptor to a PC. The Arduino then sends a configurable number of keypresses to the PC when buttons are pressed or coins are inserted, and can also startup/shutdown or reset the PC with the appropriate pins connected. The keypresses sent can be configured via small console program which currently works on Linux only (tested on Ubuntu 13.10).  
+Use an Arduino Leonardo to connect physical (arcade-style) buttons and/or a coin receptor to a PC. The Arduino then sends a configurable number of keypresses to the PC when buttons are pressed or coins are inserted, and can also startup/shutdown or reset the PC with the appropriate pins connected. The keypresses sent can be configured via small console program which currently works on Linux only (tested on Ubuntu 18.04).  
 A [Fritzing](http://fritzing.org/) layout for the connection can be found in [MAMEduino.fzz](MAMEduino.fzz) and the necessary Arduino source code in [MAMEduino/MAMEduino.ino](MAMEduino/MAMEduino.ino).  
 ![Fritzing circuit layout](Fritzing_circuit.png?raw=true)  
 The coin receptor that was used is the [MoneyControls SR3 Type2](https://www.google.de/search?q=MoneyControls+SR3+Type2+datasheet). Other models will probably need adjustments to the Arduino source code or even the electronic interface/wiring.  
@@ -41,7 +41,7 @@ The SERIAL_DEVICE should be something like /dev/ttyACM0, or you can use the opti
 
 **Currently valid buttons: 0-4.**  
 **Currently valid coins: 0-2.**  
-**Up to 5 KEYs are currently supported. Special KEYs are supported by their names:**  
+**Up to 6 KEYs are currently supported. Special KEYs are supported by their names:**  
   LCTRL, LSHIFT, LALT, LGUI, RCTRL, RSHIFT, RALT, RGUI, UP, DOWN, LEFT, RIGHT, BACKSPACE, TAB, RETURN, ESC, INSERT, DELETE, PAGEUP, PAGEDOWN, HOME, END, F1-F12  
 **Also the reset and power pin/button can be accessed:**  
   PIN_RESET, PIN_POWER (It makes no sense to send more than one "key press" for those...)  
@@ -53,7 +53,7 @@ Turn coin rejection on, auto-detect serial port: ```mameduino -a -r on```
 Set keys to send when button 0 is short-pressed: ```mameduino /dev/ttyS0 -s 0 UP LEFT```  
 Pulse power pin when button 3 is long-pressed: ```mameduino /dev/ttyUSB0 -l 3 PIN_POWER```  
 Remove key bindings when button 1 is long-pressed: ```mameduino /dev/ttyS0 -l 1 CLEAR```  
-Set some keys to send when coin 2 is inserted: ```mameduino /dev/ttyS0 -c 2 b l a r g```  
+Set some keys to send when coin 2 is inserted: ```mameduino /dev/ttyS0 -c 2 b l a h r g```  
 Dump current configuration from Arduino to stdout: ```mameduino /dev/ttyACM0 -d```  
 
 An example batch file for starting up an emulator can be found [here](setup_keys_and_run_emulator.sh). Run it with the ROM name as a parameter.
